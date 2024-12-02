@@ -1,0 +1,9 @@
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/ServerConsole.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/edit_cache.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/rebuild_cache.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/list_install_components.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/install.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/install/local.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/install/strip.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/ServerConsole_autogen_timestamp_deps.dir
+D:/Coding/QtProjects/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Release/CMakeFiles/ServerConsole_autogen.dir
