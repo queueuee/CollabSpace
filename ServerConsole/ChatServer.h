@@ -24,7 +24,8 @@ private slots:
 private:
     QTcpServer *tcpServer;
     QUdpSocket *udpSocket;
-    QSet<QTcpSocket *> clients;
+    QSet<QTcpSocket *> clientsTCP;
+    QSet<QUdpSocket *> clientsUDP;
 
     void broadcastMessage(const QString &message, QTcpSocket *excludeSocket = nullptr);
     void broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort);

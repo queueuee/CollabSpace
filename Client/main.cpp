@@ -1,12 +1,14 @@
-#include "ChatClient.h"
+#include "clientmain.h"
+
 #include <QApplication>
 
-int main(int argc, char *argv[]) {
-    QApplication app(argc, argv);
-    ChatClient client;
-    client.show();
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    ClientMain w;
+    w.show();
 
-    // ChatClient client1;
-    // client1.show();
-    return app.exec();
+    ClientMain w1;
+    w1.show();
+    return a.exec();
 }

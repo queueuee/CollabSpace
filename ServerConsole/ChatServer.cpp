@@ -32,7 +32,7 @@ bool ChatServer::startServer(quint16 tcpPort, quint16 udpPort) {
 
 void ChatServer::handleNewConnection() {
     QTcpSocket *clientSocket = tcpServer->nextPendingConnection();
-    clients.insert(clientSocket);
+    clientsTCP.insert(clientSocket);
 
     connect(clientSocket, &QTcpSocket::readyRead, this, &ChatServer::handleTcpData);
     connect(clientSocket, &QTcpSocket::disconnected, this, &ChatServer::handleTcpDisconnection);
@@ -56,7 +56,7 @@ void ChatServer::handleTcpDisconnection() {
     if (!senderSocket) return;
 
     qDebug() << "Client disconnected:" << senderSocket->peerAddress().toString();
-    clients.remove(senderSocket);
+    clientsTCP.remove(senderSocket);
     senderSocket->deleteLater();
 }
 
@@ -76,7 +76,7 @@ void ChatServer::handleUdpData() {
 
 void ChatServer::broadcastMessage(const QString &message, QTcpSocket *excludeSocket) {
     QByteArray data = message.toUtf8();
-    for (QTcpSocket *client : clients) {
+    for (QTcpSocket *client : clientsTCP) {
         if (client != excludeSocket) {
             client->write(data);
         }
@@ -84,9 +84,11 @@ void ChatServer::broadcastMessage(const QString &message, QTcpSocket *excludeSoc
 }
 
 void ChatServer::broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort) {
-    for (QTcpSocket *client : clients) {
+    for (QTcpSocket *client : clientsTCP) {
         QHostAddress clientAddress = client->peerAddress();
         quint16 clientPort = client->peerPort();
+        qDebug() << client->peerPort() << client->peerAddress();
+
         if (clientAddress != excludeAddress || clientPort != excludePort) {
             udpSocket->writeDatagram(audioData, clientAddress, clientPort);
         }

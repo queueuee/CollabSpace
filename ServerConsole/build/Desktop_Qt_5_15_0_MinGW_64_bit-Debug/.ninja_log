@@ -1,9 +1,0 @@
-# ninja log v6
-2	249	7548694859166567	ServerConsole_autogen/timestamp	e1049bc50ebeeeec
-2	249	7548694859166567	ServerConsole_autogen/mocs_compilation.cpp	e1049bc50ebeeeec
-2	249	7548694859166567	D:/Coding/QtProjects/CollabSpace/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ServerConsole_autogen/timestamp	e1049bc50ebeeeec
-2	249	7548694859166567	D:/Coding/QtProjects/CollabSpace/ServerConsole/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ServerConsole_autogen/mocs_compilation.cpp	e1049bc50ebeeeec
-254	1154	7548694859590435	CMakeFiles/ServerConsole.dir/main.cpp.obj	107bfaeda6180643
-252	1156	7548694859564891	CMakeFiles/ServerConsole.dir/ServerConsole_autogen/mocs_compilation.cpp.obj	3ca51b457293802d
-256	1199	7548694859610874	CMakeFiles/ServerConsole.dir/ChatServer.cpp.obj	70276c121bc1bde
-1199	1297	7548694869038822	ServerConsole.exe	263d9e1f1a3024ee

@@ -1,9 +1,0 @@
-# ninja log v6
-2	267	7548695684141922	ChatClient_autogen/timestamp	2dc9b842c216dc64
-2	267	7548695684141922	ChatClient_autogen/mocs_compilation.cpp	2dc9b842c216dc64
-2	267	7548695684141922	D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/timestamp	2dc9b842c216dc64
-2	267	7548695684141922	D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/mocs_compilation.cpp	2dc9b842c216dc64
-270	1424	7548695684542009	CMakeFiles/ChatClient.dir/ChatClient_autogen/mocs_compilation.cpp.obj	7c214221238ed384
-272	1426	7548695684562017	CMakeFiles/ChatClient.dir/main.cpp.obj	9ccc569e220e2cd
-274	1493	7548695684582023	CMakeFiles/ChatClient.dir/ChatClient.cpp.obj	9f9375f8352916b6
-1493	1608	7548695696776166	ChatClient.exe	fe584336915ba20b
