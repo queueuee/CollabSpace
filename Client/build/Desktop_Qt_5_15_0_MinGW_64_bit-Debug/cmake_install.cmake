@@ -1,4 +1,4 @@
-# Install script for directory: D:/Coding/QtProjects/Client
+# Install script for directory: D:/Coding/QtProjects/CollabSpace/Client
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

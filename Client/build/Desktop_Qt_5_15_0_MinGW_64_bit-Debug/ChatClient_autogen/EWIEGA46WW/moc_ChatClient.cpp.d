@@ -1,5 +1,5 @@
-D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/EWIEGA46WW/moc_ChatClient.cpp: D:/Coding/QtProjects/Client/ChatClient.h \
-  D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/moc_predefs.h \
+D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/EWIEGA46WW/moc_ChatClient.cpp: D:/Coding/QtProjects/CollabSpace/Client/ChatClient.h \
+  D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/moc_predefs.h \
   D:/Qt/5.15.0/mingw81_64/include/QtCore/QIODevice \
   D:/Qt/5.15.0/mingw81_64/include/QtCore/qalgorithms.h \
   D:/Qt/5.15.0/mingw81_64/include/QtCore/qarraydata.h \

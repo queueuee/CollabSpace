@@ -1,17 +1,17 @@
 {
 	"AUTOGEN_COMMAND_LINE_LENGTH_MAX" : 32000,
-	"BUILD_DIR" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen",
-	"CMAKE_BINARY_DIR" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug",
-	"CMAKE_CURRENT_BINARY_DIR" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug",
-	"CMAKE_CURRENT_SOURCE_DIR" : "D:/Coding/QtProjects/Client",
+	"BUILD_DIR" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen",
+	"CMAKE_BINARY_DIR" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug",
+	"CMAKE_CURRENT_BINARY_DIR" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug",
+	"CMAKE_CURRENT_SOURCE_DIR" : "D:/Coding/QtProjects/CollabSpace/Client",
 	"CMAKE_EXECUTABLE" : "D:/Qt/Tools/CMake_64/bin/cmake.exe",
 	"CMAKE_LIST_FILES" : 
 	[
-		"D:/Coding/QtProjects/Client/CMakeLists.txt",
-		"D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/.qtc/package-manager/auto-setup.cmake",
+		"D:/Coding/QtProjects/CollabSpace/Client/CMakeLists.txt",
+		"D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/.qtc/package-manager/auto-setup.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeDetermineSystem.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeSystem.cmake.in",
-		"D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeSystem.cmake",
+		"D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeSystem.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeNinjaFindMake.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeSystemSpecificInitialize.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/Platform/Windows-Initialize.cmake",
@@ -65,7 +65,7 @@
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeFindBinUtils.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/Compiler/GNU-FindBinUtils.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeCXXCompiler.cmake.in",
-		"D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeCXXCompiler.cmake",
+		"D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeCXXCompiler.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeSystemSpecificInformation.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeGenericSystem.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeInitializeConfigs.cmake",
@@ -80,7 +80,7 @@
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/Platform/Windows-GNU.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeDetermineRCCompiler.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeRCCompiler.cmake.in",
-		"D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeRCCompiler.cmake",
+		"D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeRCCompiler.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeRCInformation.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/Platform/Windows-windres.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeTestRCCompiler.cmake",
@@ -97,7 +97,7 @@
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeDetermineCompileFeatures.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/Internal/FeatureTesting.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeCXXCompiler.cmake.in",
-		"D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeCXXCompiler.cmake",
+		"D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/3.29.3/CMakeCXXCompiler.cmake",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/Platform/Windows-GNU-CXX-ABI.cmake",
 		"D:/Qt/5.15.0/mingw81_64/lib/cmake/Qt5/Qt5ConfigVersion.cmake",
 		"D:/Qt/5.15.0/mingw81_64/lib/cmake/Qt5/Qt5Config.cmake",
@@ -145,22 +145,22 @@
 		"D:/Qt/5.15.0/mingw81_64/lib/cmake/Qt5Multimedia/Qt5Multimedia_QM3uPlaylistPlugin.cmake",
 		"D:/Qt/5.15.0/mingw81_64/lib/cmake/Qt5Multimedia/Qt5Multimedia_QWindowsAudioPlugin.cmake"
 	],
-	"CMAKE_SOURCE_DIR" : "D:/Coding/QtProjects/Client",
+	"CMAKE_SOURCE_DIR" : "D:/Coding/QtProjects/CollabSpace/Client",
 	"CROSS_CONFIG" : false,
-	"DEP_FILE" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/deps",
+	"DEP_FILE" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/deps",
 	"DEP_FILE_RULE_NAME" : "ChatClient_autogen/timestamp",
 	"HEADERS" : 
 	[
 		[
-			"D:/Coding/QtProjects/Client/ChatClient.h",
+			"D:/Coding/QtProjects/CollabSpace/Client/ChatClient.h",
 			"MU",
 			"EWIEGA46WW/moc_ChatClient.cpp",
 			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
-	"INCLUDE_DIR" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/include",
-	"MOC_COMPILATION_FILE" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/mocs_compilation.cpp",
+	"INCLUDE_DIR" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/include",
+	"MOC_COMPILATION_FILE" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/mocs_compilation.cpp",
 	"MOC_DEFINITIONS" : 
 	[
 		"QT_CORE_LIB",
@@ -205,21 +205,21 @@
 		"-c",
 		"D:/Qt/Tools/CMake_64/share/cmake-3.29/Modules/CMakeCXXCompilerABI.cpp"
 	],
-	"MOC_PREDEFS_FILE" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/moc_predefs.h",
+	"MOC_PREDEFS_FILE" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/ChatClient_autogen/moc_predefs.h",
 	"MOC_RELAXED_MODE" : false,
 	"MOC_SKIP" : [],
 	"MULTI_CONFIG" : false,
 	"PARALLEL" : 6,
-	"PARSE_CACHE_FILE" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen.dir/ParseCache.txt",
+	"PARSE_CACHE_FILE" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen.dir/ParseCache.txt",
 	"QT_MOC_EXECUTABLE" : "D:/Qt/5.15.0/mingw81_64/bin/moc.exe",
 	"QT_UIC_EXECUTABLE" : "D:/Qt/5.15.0/mingw81_64/bin/uic.exe",
 	"QT_VERSION_MAJOR" : 5,
 	"QT_VERSION_MINOR" : 15,
-	"SETTINGS_FILE" : "D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen.dir/AutogenUsed.txt",
+	"SETTINGS_FILE" : "D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen.dir/AutogenUsed.txt",
 	"SOURCES" : 
 	[
-		[ "D:/Coding/QtProjects/Client/ChatClient.cpp", "MU", null ],
-		[ "D:/Coding/QtProjects/Client/main.cpp", "MU", null ]
+		[ "D:/Coding/QtProjects/CollabSpace/Client/ChatClient.cpp", "MU", null ],
+		[ "D:/Coding/QtProjects/CollabSpace/Client/main.cpp", "MU", null ]
 	],
 	"UIC_OPTIONS" : [],
 	"UIC_SEARCH_PATHS" : [],

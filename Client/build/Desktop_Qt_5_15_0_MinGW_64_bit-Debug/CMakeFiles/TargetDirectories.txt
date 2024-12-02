@@ -1,5 +1,5 @@
-D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient.dir
-D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/edit_cache.dir
-D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/rebuild_cache.dir
-D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen_timestamp_deps.dir
-D:/Coding/QtProjects/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen.dir
+D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient.dir
+D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/edit_cache.dir
+D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/rebuild_cache.dir
+D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen_timestamp_deps.dir
+D:/Coding/QtProjects/CollabSpace/Client/build/Desktop_Qt_5_15_0_MinGW_64_bit-Debug/CMakeFiles/ChatClient_autogen.dir
