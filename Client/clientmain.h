@@ -12,6 +12,9 @@
 #include <QIODevice>
 #include <QMessageBox>
 
+#include <QTimer>
+#include <QRandomGenerator>
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class ClientMain;
@@ -32,24 +35,28 @@ private slots:
     void startVoiceChat();            // Старт голосового чата
     void stopVoiceChat();             // Остановка голосового чата
     void receiveMessage();            // Получение текстового сообщения
-    void captureAudio();              // Запись и отправка аудио
+    void sendAudio();              // Запись и отправка аудио
     void readUdpAudio();              // Чтение и воспроизведение аудио
 
+    void on_micOnOffButton_clicked();
+
+    void on_headersOnOffButton_clicked();
+
 private:
+    QTimer *timer;
     // Сетевые сокеты
-    QTcpSocket *tcpSocket;            // TCP сокет для текстовых сообщений
-    QUdpSocket *udpSocket;            // UDP сокет для голосового чата
+    QTcpSocket                              *tcpSocket__;            // TCP сокет для текстовых сообщений
+    QUdpSocket                              *udpSocket__;            // UDP сокет для голосового чата
 
-    // Аудио компоненты
-    QAudioInput *audioInput;          // Вход для записи аудио
-    QAudioOutput *audioOutput;        // Выход для воспроизведения аудио
-    QIODevice *audioInputDevice;      // Устройство для записи аудио
-    QIODevice *audioOutputDevice;     // Устройство для воспроизведения аудио
-    Ui::ClientMain *ui;
+    // // Аудио компоненты
+    // QAudioInput                             *audioInput__;          // Вход для записи аудио
+    // QAudioOutput                            *audioOutput__;        // Выход для воспроизведения аудио
+    // QIODevice                               *audioInputDevice__;      // Устройство для записи аудио
+    // QIODevice                               *audioOutputDevice__;     // Устройство для воспроизведения аудио
 
-    bool voiceChatActive = false;     // Флаг активности голосового чата
+    Ui::ClientMain                          *ui__;
 
-    void setupUI();                   // Метод настройки интерфейса
+    bool                                    voiceChatActive = false;     // Флаг активности голосового чата
 
 };
 #endif // CLIENTMAIN_H

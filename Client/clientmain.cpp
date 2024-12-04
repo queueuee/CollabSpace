@@ -3,63 +3,76 @@
 
 ClientMain::ClientMain(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::ClientMain),
-    tcpSocket(new QTcpSocket(this)),
-    udpSocket(new QUdpSocket(this)),
-    audioInput(nullptr),
-    audioOutput(nullptr),
-    audioInputDevice(nullptr),
-    audioOutputDevice(nullptr)
+    , ui__(new Ui::ClientMain),
+    tcpSocket__(new QTcpSocket(this)),
+    udpSocket__(new QUdpSocket(this))
+    //, audioInput__(nullptr),
+    // audioOutput__(nullptr),
+    // audioInputDevice__(nullptr),
+    // audioOutputDevice__(nullptr)
 {
-    ui->setupUi(this);
+    ui__->setupUi(this);
 
-    connect(ui->connectButton, &QPushButton::clicked, this, &ClientMain::connectToServer);
-    connect(ui->sendButton, &QPushButton::clicked, this, &ClientMain::sendMessage);
-    connect(ui->voiceConnectButton, &QPushButton::clicked, this, &ClientMain::startVoiceChat);
-    connect(ui->voiceDisconnectButton, &QPushButton::clicked, this, &ClientMain::stopVoiceChat);
-    connect(tcpSocket, &QTcpSocket::readyRead, this, &ClientMain::receiveMessage);
+    ui__->micOnOffButton->setFlat(true);
+    ui__->headersOnOffButton->setFlat(true);
+
+    connect(ui__->connectButton, &QPushButton::clicked, this, &ClientMain::connectToServer);
+    connect(ui__->sendButton, &QPushButton::clicked, this, &ClientMain::sendMessage);
+    connect(ui__->voiceConnectButton, &QPushButton::clicked, this, &ClientMain::startVoiceChat);
+    connect(ui__->voiceDisconnectButton, &QPushButton::clicked, this, &ClientMain::stopVoiceChat);
+    connect(tcpSocket__, &QTcpSocket::readyRead, this, &ClientMain::receiveMessage);
 }
 
 ClientMain::~ClientMain()
 {
-    if (voiceChatActive) {
+    if (voiceChatActive)
+    {
         stopVoiceChat();
     }
-    if (tcpSocket->isOpen()) {
-        tcpSocket->close();
+    if (tcpSocket__->isOpen())
+    {
+        tcpSocket__->close();
     }
-    if (udpSocket->isOpen()) {
-        udpSocket->close();
+    if (udpSocket__->isOpen())
+    {
+        udpSocket__->close();
     }
 
-    delete ui;
+    delete ui__;
 }
 
 
-void ClientMain::connectToServer() {
-    tcpSocket->connectToHost(QHostAddress("127.0.0.1"), 12345);
-    if (tcpSocket->waitForConnected(3000)) {
-        ui->chatWindow->append("Connected to the server.");
-    } else {
+void ClientMain::connectToServer()
+{
+    tcpSocket__->connectToHost(QHostAddress("127.0.0.1"), 12345);
+    if (tcpSocket__->waitForConnected(2000))
+    {
+        ui__->chatWindow->append("Connected to the server.");
+    } else
+    {
         QMessageBox::warning(this, "Connection Error", "Failed to connect to the server.");
     }
 }
 
 void ClientMain::sendMessage() {
-    QString message = ui->messageInput->text();
-    if (!message.isEmpty() && tcpSocket->state() == QTcpSocket::ConnectedState) {
-        tcpSocket->write(message.toUtf8());
-        ui->chatWindow->append("You: " + message);
-        ui->messageInput->clear();
+    QString message = ui__->messageInput->text();
+    if (!message.isEmpty() && tcpSocket__->state() == QTcpSocket::ConnectedState)
+    {
+        tcpSocket__->write(message.toUtf8());
+        ui__->chatWindow->append("You: " + message);
+        ui__->messageInput->clear();
     }
 }
 
-void ClientMain::receiveMessage() {
-    QByteArray data = tcpSocket->readAll();
-    ui->chatWindow->append("Server: " + QString::fromUtf8(data));
+
+void ClientMain::receiveMessage()
+{
+    QByteArray data = tcpSocket__->readAll();
+    ui__->chatWindow->append("Server: " + QString::fromUtf8(data));
 }
 
-void ClientMain::startVoiceChat() {
+void ClientMain::startVoiceChat()
+{
     if (voiceChatActive)
         return;
 
@@ -71,48 +84,78 @@ void ClientMain::startVoiceChat() {
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setSampleType(QAudioFormat::SignedInt);
 
-    audioInput = new QAudioInput(format, this);
-    audioOutput = new QAudioOutput(format, this);
+    // audioInput__ = new QAudioInput(format, this);
+    // audioOutput__ = new QAudioOutput(format, this);
 
-    if (!udpSocket->bind(QHostAddress::AnyIPv4, quint16(0), QAbstractSocket::ShareAddress | QAbstractSocket::ReuseAddressHint)) {
-        ui->chatWindow->append("Failed to bind UDP socket.");
-        delete audioInput;
-        audioInput = nullptr;
+    if (!udpSocket__->bind(QHostAddress::AnyIPv4, quint16(0), QAbstractSocket::ShareAddress | QAbstractSocket::ReuseAddressHint))
+    {
+        ui__->chatWindow->append("Failed to bind UDP socket.");
+        // delete audioInput__;
+        // audioInput__ = nullptr;
         return;
     }
-    audioInputDevice = audioInput->start();
-    audioOutputDevice = audioOutput->start();
+    // audioInputDevice__ = audioInput__->start();
+    // audioOutputDevice__ = audioOutput__->start();
 
-    connect(audioInputDevice, &QIODevice::readyRead, this, &ClientMain::captureAudio);
-    connect(udpSocket, &QUdpSocket::readyRead, this, &ClientMain::readUdpAudio);
+    // connect(audioInputDevice__, &QIODevice::readyRead, this, &ClientMain::captureAudio);
 
-    ui->chatWindow->append("Voice chat started.");
+    timer = new QTimer(this);
+    timer->start(1000);
+    connect(timer, &QTimer::timeout, this, &ClientMain::sendAudio);
+    connect(udpSocket__, &QUdpSocket::readyRead, this, &ClientMain::readUdpAudio);
+
+    ui__->chatWindow->append("Voice chat started.");
     voiceChatActive = true;
 }
 
-void ClientMain::stopVoiceChat() {
+void ClientMain::stopVoiceChat()
+{
     if (!voiceChatActive) return;
 
-    audioInput->stop();
-    audioOutput->stop();
+    udpSocket__->writeDatagram("DISCONNECT", QHostAddress("127.0.0.1"), 54321);
 
-    delete audioInput;
-    delete audioOutput;
+    disconnect(timer, &QTimer::timeout, this, &ClientMain::sendAudio);
+    disconnect(udpSocket__, &QUdpSocket::readyRead, this, &ClientMain::readUdpAudio);
 
-    udpSocket->close();
+    // audioInput__->stop();
+    // audioOutput__->stop();
 
-    ui->chatWindow->append("Voice chat stopped.");
+    // delete audioInput__;
+    // delete audioOutput__;
+
+    udpSocket__->close();
+
+    ui__->chatWindow->append("Voice chat stopped.");
     voiceChatActive = false;
 }
 
-void ClientMain::captureAudio() {
-    if (!audioInputDevice || !udpSocket) return;
-
+void ClientMain::sendAudio() {
+    // if (!audioInputDevice__ || !udpSocket__) return;
+    if (!ui__->micOnOffButton->isFlat())
+        // перенести это в captureAudio, это заменить проверкой длины audioData или чем-то еще, мб громкостью
+        return;
     // Считываем данные из аудиоустройства
-    QByteArray audioData = audioInputDevice->readAll();
+    // QByteArray audioData = audioInputDevice__->readAll();
+
+
+
+    //
+    QByteArray audioData;
+
+    audioData.resize(5);
+    audioData[0] = QRandomGenerator::global()->bounded(256);
+    audioData[1] = QRandomGenerator::global()->bounded(256);
+    audioData[2] = QRandomGenerator::global()->bounded(256);
+    audioData[3] = QRandomGenerator::global()->bounded(256);
+    audioData[4] = QRandomGenerator::global()->bounded(256);
+    //
+
+
+
     if (!audioData.isEmpty()) {
         // Отправляем данные через UDP
-        udpSocket->writeDatagram(audioData, QHostAddress("127.0.0.1"), 54321);
+        // qDebug() << "Send voice" << audioData;
+        udpSocket__->writeDatagram(audioData, QHostAddress("127.0.0.1"), 54321);
 
         // // Воспроизводим данные на аудиовыходе
         // if (audioOutputDevice) {
@@ -122,15 +165,30 @@ void ClientMain::captureAudio() {
 }
 
 void ClientMain::readUdpAudio() {
-    while (udpSocket->hasPendingDatagrams()) {
+    if (!ui__->headersOnOffButton->isFlat())
+        return;
+
+    while (udpSocket__->hasPendingDatagrams()) {
         QByteArray buffer;
-        audioOutputDevice->write(buffer);
+        // audioOutputDevice__->write(buffer);
 
-        buffer.resize(udpSocket->pendingDatagramSize());
-        udpSocket->readDatagram(buffer.data(), buffer.size());
-
-        if (audioOutputDevice) {
-            audioOutputDevice->write(buffer);
-        }
+        buffer.resize(udpSocket__->pendingDatagramSize());
+        udpSocket__->readDatagram(buffer.data(), buffer.size());
+        qDebug() << buffer;
+        // if (audioOutputDevice__) {
+        //     audioOutputDevice__->write(buffer);
+        // }
     }
 }
+
+void ClientMain::on_micOnOffButton_clicked()
+{
+    ui__->micOnOffButton->setFlat(!ui__->micOnOffButton->isFlat());
+}
+
+
+void ClientMain::on_headersOnOffButton_clicked()
+{
+    ui__->headersOnOffButton->setFlat(!ui__->headersOnOffButton->isFlat());
+}
+

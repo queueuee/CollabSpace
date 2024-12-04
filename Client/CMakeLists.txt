@@ -20,7 +20,9 @@ set(PROJECT_SOURCES
 )
 
 # Создание исполняемого файла
-add_executable(Client ${PROJECT_SOURCES})
+add_executable(Client ${PROJECT_SOURCES}
+    icons.qrc
+)
 
 # Привязка библиотек к целевой программе
 target_link_libraries(Client PRIVATE Qt5::Core Qt5::Widgets Qt5::Network Qt5::Multimedia)
