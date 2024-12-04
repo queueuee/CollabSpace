@@ -12,9 +12,6 @@
 #include <QIODevice>
 #include <QMessageBox>
 
-#include <QTimer>
-#include <QRandomGenerator>
-
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class ClientMain;
@@ -31,11 +28,17 @@ public:
 
 private slots:
     void connectToServer();           // Подключение к серверу
+
     void sendMessage();               // Отправка текстового сообщения
+
     void startVoiceChat();            // Старт голосового чата
-    void stopVoiceChat();             // Остановка голосового чата
+
+    void leaveVoiceChat();             // Остановка голосового чата
+
     void receiveMessage();            // Получение текстового сообщения
+
     void sendAudio();              // Запись и отправка аудио
+
     void readUdpAudio();              // Чтение и воспроизведение аудио
 
     void on_micOnOffButton_clicked();
@@ -43,20 +46,25 @@ private slots:
     void on_headersOnOffButton_clicked();
 
 private:
-    QTimer *timer;
     // Сетевые сокеты
     QTcpSocket                              *tcpSocket__;            // TCP сокет для текстовых сообщений
     QUdpSocket                              *udpSocket__;            // UDP сокет для голосового чата
 
     // // Аудио компоненты
-    // QAudioInput                             *audioInput__;          // Вход для записи аудио
-    // QAudioOutput                            *audioOutput__;        // Выход для воспроизведения аудио
-    // QIODevice                               *audioInputDevice__;      // Устройство для записи аудио
-    // QIODevice                               *audioOutputDevice__;     // Устройство для воспроизведения аудио
+    QAudioInput                             *audioInput__;          // Вход для записи аудио
+    QAudioOutput                            *audioOutput__;        // Выход для воспроизведения аудио
+    QIODevice                               *audioInputDevice__;      // Устройство для записи аудио
+    QIODevice                               *audioOutputDevice__;     // Устройство для воспроизведения аудио
+    QAudioFormat format;
 
     Ui::ClientMain                          *ui__;
 
-    bool                                    voiceChatActive = false;     // Флаг активности голосового чата
+    bool                                    voiceChatActive__ = false;     // Флаг активности голосового чата
+    bool                                    micEnabled__ = true;
+    bool                                    headphonesEnabled__ = true;
 
+
+    void                                    muteMic(bool);
+    void                                    muteHeadphones(bool);
 };
 #endif // CLIENTMAIN_H
