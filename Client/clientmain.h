@@ -1,6 +1,11 @@
 #ifndef CLIENTMAIN_H
 #define CLIENTMAIN_H
 
+#include "./ui_clientmain.h"
+
+#include "authorization.h"
+#include "systemmanager.h"
+
 #include <QMainWindow>
 #include <QTcpSocket>
 #include <QUdpSocket>
@@ -11,6 +16,9 @@
 #include <QAudioOutput>
 #include <QIODevice>
 #include <QMessageBox>
+#include <QTimer>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -46,6 +54,8 @@ private slots:
     void on_headersOnOffButton_clicked();
 
 private:
+    SystemManager                           *systemManager__;
+
     // Сетевые сокеты
     QTcpSocket                              *tcpSocket__;            // TCP сокет для текстовых сообщений
     QUdpSocket                              *udpSocket__;            // UDP сокет для голосового чата

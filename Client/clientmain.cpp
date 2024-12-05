@@ -1,22 +1,40 @@
 #include "clientmain.h"
-#include "./ui_clientmain.h"
+
+
+const QString programmName = "Collab Space";
+
 
 ClientMain::ClientMain(QWidget *parent)
     : QMainWindow(parent)
-    , ui__(new Ui::ClientMain),
-    tcpSocket__(new QTcpSocket(this)),
-    udpSocket__(new QUdpSocket(this))
-    , audioInput__(nullptr),
-    audioOutput__(nullptr),
-    audioInputDevice__(nullptr),
-    audioOutputDevice__(nullptr)
+    , ui__(new Ui::ClientMain)
+    , systemManager__(NULL)
+    , tcpSocket__(new QTcpSocket(this))
+    , udpSocket__(new QUdpSocket(this))
+    , audioInput__(nullptr)
+    , audioOutput__(nullptr)
+    , audioInputDevice__(nullptr)
+    , audioOutputDevice__(nullptr)
 {
     ui__->setupUi(this);
+
+    QTimer::singleShot(50, this, [this] ()
+    {
+        Authorization auth(systemManager__);
+        auth.setModal(true);
+        if(auth.exec() == QDialog::Accepted)
+        {
+            setWindowTitle(programmName + " - " + systemManager__->userLogin);
+
+            // Запрос друзей/участников/сообщений из бд
+            connectToServer();
+        }
+        else
+            QApplication::quit();
+    });
 
     ui__->micOnOffButton->setFlat(true);
     ui__->headersOnOffButton->setFlat(true);
 
-    connect(ui__->connectButton, &QPushButton::clicked, this, &ClientMain::connectToServer);
     connect(ui__->sendButton, &QPushButton::clicked, this, &ClientMain::sendMessage);
     connect(ui__->voiceConnectButton, &QPushButton::clicked, this, &ClientMain::startVoiceChat);
     connect(ui__->voiceDisconnectButton, &QPushButton::clicked, this, &ClientMain::leaveVoiceChat);
@@ -57,19 +75,41 @@ void ClientMain::connectToServer()
 
 void ClientMain::sendMessage() {
     QString message = ui__->messageInput->text();
+
     if (!message.isEmpty() && tcpSocket__->state() == QTcpSocket::ConnectedState)
     {
-        tcpSocket__->write(message.toUtf8());
-        ui__->chatWindow->append("You: " + message);
+        QJsonObject messageJson{
+            {"type", "text_message"},       // тип сообщения
+            {"server_id", "0"},             // id сервера
+            {"chat_id", "0"},               // id чата на сервере
+            {"userName", systemManager__->userLogin},
+            {"content", message},            // содержимое сообщения
+            {"timestamp", QDateTime::currentDateTime().toString(Qt::ISODate)}
+        };
+
+        QByteArray data = QJsonDocument(messageJson).toJson();
+        tcpSocket__->write(data);
+        ui__->chatWindow->append(systemManager__->userLogin + " " + QDateTime::currentDateTime().toString("HH:mm") + " (You)\n" + message + "\n");
         ui__->messageInput->clear();
     }
 }
 
-
 void ClientMain::receiveMessage()
 {
     QByteArray data = tcpSocket__->readAll();
-    ui__->chatWindow->append("Server: " + QString::fromUtf8(data));
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
+
+    if (!jsonDoc.isObject())
+    {
+        qWarning() << "Invalid message format from server";
+    }
+
+    QJsonObject messageJson = jsonDoc.object();
+    QString userName = messageJson.value("userName").toString();
+    QString content = messageJson.value("content").toString();
+    QString timestamp = messageJson.value("timestamp").toString();
+
+    ui__->chatWindow->append(userName + " " + timestamp + "\n" + content + "\n");
 }
 
 void ClientMain::startVoiceChat()

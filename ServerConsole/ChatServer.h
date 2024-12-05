@@ -6,6 +6,8 @@
 #include <QUdpSocket>
 #include <QSet>
 #include <QHash>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 class ChatServer : public QObject {
     Q_OBJECT
@@ -28,7 +30,8 @@ private:
     QSet<QTcpSocket *> clientsTCP;
     QHash<QString, QPair<QHostAddress, quint16>> clientsUDP;
 
-    void broadcastMessage(const QString &message, QTcpSocket *excludeSocket = nullptr);
+    void broadcastMessage(const QJsonObject &message, QTcpSocket *excludeSocket = nullptr);
+    // void broadcastMessage(const QString &message, QTcpSocket *excludeSocket = nullptr);
     void broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort);
 };
 

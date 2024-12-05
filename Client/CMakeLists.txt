@@ -17,11 +17,15 @@ set(PROJECT_SOURCES
     clientmain.cpp
     clientmain.h
     clientmain.ui
+
+
 )
 
 # Создание исполняемого файла
 add_executable(Client ${PROJECT_SOURCES}
     icons.qrc
+    authorization.h authorization.cpp authorization.ui
+    systemmanager.h systemmanager.cpp
 )
 
 # Привязка библиотек к целевой программе

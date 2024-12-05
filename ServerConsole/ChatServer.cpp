@@ -45,6 +45,18 @@ void ChatServer::handleNewTcpConnection()
     qDebug() << "New client connected from" << clientSocket->peerAddress().toString();
 }
 
+// void ChatServer::handleTcpData()
+// {
+//     QTcpSocket *senderSocket = qobject_cast<QTcpSocket *>(sender());
+//     if (!senderSocket)
+//         return;
+
+//     QByteArray data = senderSocket->readAll();
+//     QString message = QString::fromUtf8(data);
+
+//     qDebug() << "Message received:" << message;
+//     broadcastMessage(message, senderSocket);
+// }
 void ChatServer::handleTcpData()
 {
     QTcpSocket *senderSocket = qobject_cast<QTcpSocket *>(sender());
@@ -52,10 +64,31 @@ void ChatServer::handleTcpData()
         return;
 
     QByteArray data = senderSocket->readAll();
-    QString message = QString::fromUtf8(data);
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
 
-    qDebug() << "Message received:" << message;
-    broadcastMessage(message, senderSocket);
+    if (!jsonDoc.isObject())
+    {
+        qWarning() << "Invalid message format";
+    }
+
+    QJsonObject messageJson = jsonDoc.object();
+    QString userName = messageJson.value("userName").toString();
+    QString content = messageJson.value("content").toString();
+    // для записи в бд
+    QString timestamp = messageJson.value("timestamp").toString();
+    // для отправки клиенту
+    QString time = QDateTime::fromString(timestamp, Qt::ISODate).toString("HH:mm");
+
+    QJsonObject messageJsonToSend{
+        {"type", "text_message"},       // тип сообщения
+        {"userName", userName},
+        {"content", content},            // содержимое сообщения
+        {"timestamp", time}
+    };
+
+    qDebug() << time;
+
+    broadcastMessage(messageJsonToSend, senderSocket);
 }
 
 void ChatServer::handleTcpDisconnection()
@@ -99,9 +132,9 @@ void ChatServer::handleUdpData()
     }
 }
 
-void ChatServer::broadcastMessage(const QString &message, QTcpSocket *excludeSocket)
+void ChatServer::broadcastMessage(const QJsonObject &messageJson, QTcpSocket *excludeSocket)
 {
-    QByteArray data = message.toUtf8();
+    QByteArray data = QJsonDocument(messageJson).toJson();
     for (QTcpSocket *client : clientsTCP)
     {
         if (client != excludeSocket)
@@ -111,14 +144,14 @@ void ChatServer::broadcastMessage(const QString &message, QTcpSocket *excludeSoc
     }
 }
 
-// void ChatServer::broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort) {
-//     for (QTcpSocket *client : clientsTCP) {
-//         QHostAddress clientAddress = client->peerAddress();
-//         quint16 clientPort = client->peerPort();
-//         qDebug() << client->peerPort() << client->peerAddress();
-
-//         if (clientAddress != excludeAddress || clientPort != excludePort) {
-//             udpSocket->writeDatagram(audioData, clientAddress, clientPort);
+// void ChatServer::broadcastMessage(const QString &message, QTcpSocket *excludeSocket)
+// {
+//     QByteArray data = message.toUtf8();
+//     for (QTcpSocket *client : clientsTCP)
+//     {
+//         if (client != excludeSocket)
+//         {
+//             client->write(data);
 //         }
 //     }
 // }

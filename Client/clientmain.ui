@@ -97,13 +97,6 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="connectButton">
-         <property name="text">
-          <string>connectButton</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <widget class="QToolButton" name="toolButton">
@@ -125,7 +118,7 @@
          <item>
           <widget class="QPushButton" name="sendButton">
            <property name="text">
-            <string>sendButton</string>
+            <string>-&gt;</string>
            </property>
           </widget>
          </item>
