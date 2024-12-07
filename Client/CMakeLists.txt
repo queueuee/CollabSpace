@@ -26,6 +26,7 @@ add_executable(Client ${PROJECT_SOURCES}
     icons.qrc
     authorization.h authorization.cpp authorization.ui
     systemmanager.h systemmanager.cpp
+    networkmanager.h networkmanager.cpp
 )
 
 # Привязка библиотек к целевой программе

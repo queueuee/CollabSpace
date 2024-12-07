@@ -1,24 +1,19 @@
 #ifndef CLIENTMAIN_H
 #define CLIENTMAIN_H
 
-#include "./ui_clientmain.h"
-
 #include "authorization.h"
 #include "systemmanager.h"
+#include "networkmanager.h"
 
 #include <QMainWindow>
-#include <QTcpSocket>
-#include <QUdpSocket>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QTextEdit>
-#include <QAudioInput>
-#include <QAudioOutput>
-#include <QIODevice>
 #include <QMessageBox>
 #include <QTimer>
-#include <QJsonDocument>
-#include <QJsonObject>
+#include <QScopedPointer>
+#include <QDateTime>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -36,45 +31,20 @@ public:
 
 private slots:
     void connectToServer();           // Подключение к серверу
-
     void sendMessage();               // Отправка текстового сообщения
-
     void startVoiceChat();            // Старт голосового чата
-
-    void leaveVoiceChat();             // Остановка голосового чата
-
-    void receiveMessage();            // Получение текстового сообщения
-
-    void sendAudio();              // Запись и отправка аудио
-
-    void readUdpAudio();              // Чтение и воспроизведение аудио
-
+    void leaveVoiceChat();            // Остановка голосового чата
     void on_micOnOffButton_clicked();
-
     void on_headersOnOffButton_clicked();
 
+    void handleMessageReceived(const QString &userName, const QString &content, const QString &timestamp);
+    void handleConnectionSuccess();
+    void handleConnectionFailed();
+
 private:
-    SystemManager                           *systemManager__;
-
-    // Сетевые сокеты
-    QTcpSocket                              *tcpSocket__;            // TCP сокет для текстовых сообщений
-    QUdpSocket                              *udpSocket__;            // UDP сокет для голосового чата
-
-    // // Аудио компоненты
-    QAudioInput                             *audioInput__;          // Вход для записи аудио
-    QAudioOutput                            *audioOutput__;        // Выход для воспроизведения аудио
-    QIODevice                               *audioInputDevice__;      // Устройство для записи аудио
-    QIODevice                               *audioOutputDevice__;     // Устройство для воспроизведения аудио
-    QAudioFormat format;
-
-    Ui::ClientMain                          *ui__;
-
-    bool                                    voiceChatActive__ = false;     // Флаг активности голосового чата
-    bool                                    micEnabled__ = true;
-    bool                                    headphonesEnabled__ = true;
-
-
-    void                                    muteMic(bool);
-    void                                    muteHeadphones(bool);
+    SystemManager    *systemManager__;
+    NetworkManager   *networkManager__;  // Новый класс для управления сетью
+    Ui::ClientMain   *ui__;
 };
+
 #endif // CLIENTMAIN_H
