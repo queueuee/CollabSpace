@@ -27,12 +27,15 @@ private slots:
     void on_cancelBtn_clicked();
 
 private:
-    Ui::Authorization *ui__;
-    SystemManager*& systemManager__;
 
     void showWarningMessage(const QString &message_);
     void authFinished(QString error_);
     void disableFieldsOnAuthProcess(bool);
+
+
+    SystemManager                               *&systemManager__;
+
+    Ui::Authorization                           *ui__;
 };
 
 #endif // AUTHORIZATION_H

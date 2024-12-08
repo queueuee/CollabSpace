@@ -15,16 +15,20 @@ NetworkManager::NetworkManager(QObject *parent)
     microphoneEnabled__(true),
     headphonesEnabled__(true)
 {
-    connect(tcpSocket__, &QTcpSocket::readyRead, this, [this]() {
+    connect(tcpSocket__, &QTcpSocket::readyRead, this, [this]()
+    {
         QByteArray data = tcpSocket__->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
-        if (jsonDoc.isObject()) {
+        if (jsonDoc.isObject())
+        {
             QJsonObject messageJson = jsonDoc.object();
             QString userName = messageJson.value("userName").toString();
             QString content = messageJson.value("content").toString();
             QString timestamp = messageJson.value("timestamp").toString();
             emit messageReceived(userName, content, timestamp);
-        } else {
+        }
+        else
+        {
             qWarning() << "Invalid message format received.";
         }
     });
@@ -39,7 +43,9 @@ NetworkManager::~NetworkManager()
         audioOutputDevice__->close();
     }
     udpSocket__->close();
+    udpSocket__->deleteLater();
     tcpSocket__->close();
+    tcpSocket__->deleteLater();
 }
 
 void NetworkManager::connectToServer(const QString &host, quint16 port)
@@ -88,7 +94,7 @@ void NetworkManager::startVoiceChat()
     audioInput__.reset(new QAudioInput(format, this));
     audioOutput__.reset(new QAudioOutput(format, this));
 
-    //udpSocket__ = new QUdpSocket(this);
+    udpSocket__ = new QUdpSocket(this);
     udpSocket__->bind(QHostAddress::AnyIPv4, quint16(0), QAbstractSocket::ShareAddress | QAbstractSocket::ReuseAddressHint);
 
     audioInputDevice__ = audioInput__->start();
@@ -107,8 +113,8 @@ void NetworkManager::leaveVoiceChat()
 
     udpSocket__->writeDatagram("DISCONNECT", QHostAddress("127.0.0.1"), 54321);
 
-    onOffMic(false);
-    onOffHeadphones(false);
+    onOffAudioOutput(false);
+    onOffAudioInput(false);
 
     disconnect(udpSocket__, &QUdpSocket::readyRead, this, &NetworkManager::readUdpAudio);
     udpSocket__->close();
@@ -135,7 +141,7 @@ void NetworkManager::readUdpAudio()
             {
                 QByteArray buffer;
                 buffer.resize(udpSocket__->pendingDatagramSize());
-                udpSocket__->readDatagram(buffer.data(), buffer.size()); // Сбрасываем данные
+                udpSocket__->readDatagram(buffer.data(), buffer.size());
             }
         }
         return;
@@ -158,7 +164,44 @@ void NetworkManager::readUdpAudio()
 void NetworkManager::onOffHeadphones(bool headphonesEnabled_)
 {
     headphonesEnabled__ = headphonesEnabled_;
+    if (voiceChatActive__)
+        onOffAudioInput(headphonesEnabled_);
+}
 
+void NetworkManager::onOffMic(bool micEnabled_)
+{
+    microphoneEnabled__ = micEnabled_;
+
+    if (voiceChatActive__)
+        onOffAudioOutput(microphoneEnabled__);
+}
+
+void NetworkManager::onOffAudioOutput(bool audioOn_)
+{
+    if (!audioOn_)
+    {
+        if (audioInputDevice__)
+        {
+            disconnect(audioInputDevice__, &QIODevice::readyRead, this, &NetworkManager::sendAudio);
+            audioInput__->stop();
+            audioInputDevice__ = nullptr;
+        }
+        if (!audioOn_ && !audioInput__.isNull())
+        {
+            audioInput__.reset();
+        }
+    }
+    else
+    {
+        audioInput__.reset(new QAudioInput(format, this));
+        audioInputDevice__ = audioInput__->start();
+        connect(audioInputDevice__, &QIODevice::readyRead, this, &NetworkManager::sendAudio);
+    }
+
+}
+
+void NetworkManager::onOffAudioInput(bool audioOn_)
+{
     if (audioOutput__)
     {
         qDebug() << "Stopping audio output.";
@@ -166,9 +209,8 @@ void NetworkManager::onOffHeadphones(bool headphonesEnabled_)
         audioOutput__.reset();
     }
 
-    if (!headphonesEnabled_)
+    if (!audioOn_)
     {
-        // Clear UDP socket buffer
         if (udpSocket__)
         {
             while (udpSocket__->hasPendingDatagrams())
@@ -187,33 +229,7 @@ void NetworkManager::onOffHeadphones(bool headphonesEnabled_)
         audioOutput__.reset(new QAudioOutput(format, this));
         audioOutputDevice__ = audioOutput__->start();
     }
-}
 
-void NetworkManager::onOffMic(bool micEnabled_)
-{
-    microphoneEnabled__ = micEnabled_;
-
-    if (!micEnabled_)
-    {
-        if (audioInputDevice__)
-        {
-            disconnect(audioInputDevice__, &QIODevice::readyRead, this, &NetworkManager::sendAudio);
-            audioInput__->stop();
-            audioInputDevice__ = nullptr;
-        }
-
-        // Дополнительно можно очистить ресурс, если не планируется использовать mic дальше
-        if (!micEnabled_ && !audioInput__.isNull())
-        {
-            audioInput__.reset();
-        }
-    }
-    else
-    {
-        audioInput__.reset(new QAudioInput(format, this));
-        audioInputDevice__ = audioInput__->start();
-        connect(audioInputDevice__, &QIODevice::readyRead, this, &NetworkManager::sendAudio);
-    }
 }
 
 bool NetworkManager::isMicrophoneEnabled() const

@@ -41,18 +41,21 @@ private slots:
 
 private:
     void setupAudioFormat();
+    void onOffAudioOutput(bool);
+    void onOffAudioInput(bool);
 
-    QTcpSocket      *tcpSocket__;
-    QUdpSocket      *udpSocket__;
-    QScopedPointer<QAudioInput>  audioInput__;
-    QScopedPointer<QAudioOutput> audioOutput__;
-    QIODevice       *audioInputDevice__;
-    QIODevice       *audioOutputDevice__;
-    QAudioFormat    format;
 
-    bool microphoneEnabled__ = true;
-    bool headphonesEnabled__ = true;
-    bool voiceChatActive__ = false;
+    QTcpSocket                                      *tcpSocket__;
+    QUdpSocket                                      *udpSocket__;
+    QScopedPointer<QAudioInput>                     audioInput__;
+    QScopedPointer<QAudioOutput>                    audioOutput__;
+    QIODevice                                       *audioInputDevice__;
+    QIODevice                                       *audioOutputDevice__;
+    QAudioFormat                                    format;
+
+    bool                                            microphoneEnabled__ = true;
+    bool                                            headphonesEnabled__ = true;
+    bool                                            voiceChatActive__ = false;
 };
 
 #endif // NETWORKMANAGER_H

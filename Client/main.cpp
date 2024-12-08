@@ -8,8 +8,8 @@ int main(int argc, char *argv[])
     ClientMain w;
     w.show();
 
-    ClientMain w1;
-    w1.show();
+    // ClientMain w1;
+    // w1.show();
 
     return a.exec();
 }

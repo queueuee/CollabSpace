@@ -3,7 +3,6 @@
 
 #include "authorization.h"
 #include "systemmanager.h"
-#include "networkmanager.h"
 
 #include <QMainWindow>
 #include <QLineEdit>
@@ -30,21 +29,31 @@ public:
     ~ClientMain();
 
 private slots:
-    void connectToServer();           // Подключение к серверу
     void sendMessage();               // Отправка текстового сообщения
+
     void startVoiceChat();            // Старт голосового чата
+
     void leaveVoiceChat();            // Остановка голосового чата
+
     void on_micOnOffButton_clicked();
+
     void on_headersOnOffButton_clicked();
 
     void handleMessageReceived(const QString &userName, const QString &content, const QString &timestamp);
+
     void handleConnectionSuccess();
+
     void handleConnectionFailed();
 
 private:
-    SystemManager    *systemManager__;
-    NetworkManager   *networkManager__;  // Новый класс для управления сетью
-    Ui::ClientMain   *ui__;
+    SystemManager                               *systemManager__;
+
+
+    bool                                        micEnabled__ = true;
+    bool                                        headphonesEnabled__ = true;
+
+
+    Ui::ClientMain                              *ui__;
 };
 
 #endif // CLIENTMAIN_H

@@ -45,18 +45,6 @@ void ChatServer::handleNewTcpConnection()
     qDebug() << "New client connected from" << clientSocket->peerAddress().toString();
 }
 
-// void ChatServer::handleTcpData()
-// {
-//     QTcpSocket *senderSocket = qobject_cast<QTcpSocket *>(sender());
-//     if (!senderSocket)
-//         return;
-
-//     QByteArray data = senderSocket->readAll();
-//     QString message = QString::fromUtf8(data);
-
-//     qDebug() << "Message received:" << message;
-//     broadcastMessage(message, senderSocket);
-// }
 void ChatServer::handleTcpData()
 {
     QTcpSocket *senderSocket = qobject_cast<QTcpSocket *>(sender());
@@ -143,18 +131,6 @@ void ChatServer::broadcastMessage(const QJsonObject &messageJson, QTcpSocket *ex
         }
     }
 }
-
-// void ChatServer::broadcastMessage(const QString &message, QTcpSocket *excludeSocket)
-// {
-//     QByteArray data = message.toUtf8();
-//     for (QTcpSocket *client : clientsTCP)
-//     {
-//         if (client != excludeSocket)
-//         {
-//             client->write(data);
-//         }
-//     }
-// }
 
 
 void ChatServer::broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort)
