@@ -10,16 +10,19 @@ ClientMain::ClientMain(QWidget *parent)
     systemManager__(nullptr)
 {
     ui__->setupUi(this);
-
+    ui__->tabWidget->tabBar()->setTabVisible(0, false);
     // Авторизация
-    QTimer::singleShot(50, this, [this]() {
+    QTimer::singleShot(50, this, [this](){
         Authorization auth(systemManager__);
         auth.setModal(true);
-        if (auth.exec() == QDialog::Accepted) {
+        if (auth.exec() == QDialog::Accepted)
+        {
             setWindowTitle(programmName + " - " + systemManager__->userLogin);
 
             connect(systemManager__, &SystemManager::handleMessage, this, &ClientMain::handleMessageReceived);
-        } else {
+        }
+        else
+        {
             QApplication::quit();
         }
     });

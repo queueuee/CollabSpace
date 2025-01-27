@@ -1,37 +1,45 @@
 #ifndef CHATSERVER_H
 #define CHATSERVER_H
 
-#include <QTcpServer>
-#include <QTcpSocket>
+#include <QObject>
+#include <QWebSocketServer>
+#include <QWebSocket>
 #include <QUdpSocket>
 #include <QSet>
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QtSql/QSqlDatabase>
+#include <QtSql/QSqlQuery>
+#include <QtSql/QSqlError>
 
 class ChatServer : public QObject {
     Q_OBJECT
 
 public:
-    explicit ChatServer(QObject *parent = nullptr);
+    explicit ChatServer(QSqlDatabase *db_ = nullptr, QObject *parent = nullptr);
     ~ChatServer();
 
-    bool startServer(quint16 tcpPort, quint16 udpPort);
+    bool startServer(quint16 wsPort, quint16 udpPort);
 
 private slots:
-    void handleNewTcpConnection();
-    void handleTcpData();
-    void handleTcpDisconnection();
+    void handleNewWebSocketConnection();
+    void handleWebSocketMessage(const QString &message);
+    void handleWebSocketDisconnection();
     void handleUdpData();
-
+signals:
+    void textMessageReceived(const QString &userName,
+                             const QString &content,
+                             const QString &timestamp);
 private:
-    QTcpServer *tcpServer;
+    QSqlDatabase *db__;
+    QWebSocketServer *webSocketServer;
+    QSet<QWebSocket *> clientsWebSocket;
     QUdpSocket *udpSocket;
-    QSet<QTcpSocket *> clientsTCP;
     QHash<QString, QPair<QHostAddress, quint16>> clientsUDP;
 
-    void broadcastMessage(const QJsonObject &message, QTcpSocket *excludeSocket = nullptr);
-    // void broadcastMessage(const QString &message, QTcpSocket *excludeSocket = nullptr);
+    void parseJson(QJsonObject &messageJson_);
+    void broadcastMessage(const QJsonObject &message, QWebSocket *excludeSocket = nullptr);
     void broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort);
 };
 

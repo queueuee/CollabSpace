@@ -7,26 +7,22 @@ SystemManager::SystemManager(QObject *parent)
     networkManager__(new NetworkManager(this))
 {
     connect(networkManager__, &NetworkManager::connectionFailed, this, &SystemManager::handleConnectionFailed);
-    connect(networkManager__, &NetworkManager::messageReceived, this, &SystemManager::handleMessageReceived);
+    connect(networkManager__, &NetworkManager::textMessageReceived, this, &SystemManager::handleMessageReceived);
 
 }
 
-void SystemManager::startAuth(dbAuthData data_)
+void SystemManager::startAuth(loginAuthData data_)
 {
     qDebug() << data_.login << data_.password;
     userLogin = data_.login;
-    // Подключение к бд
-    QString error = "";
 
-    if (error.isEmpty())
-        connectToServer();
+    QString error = networkManager__->connectToCollabSpaceServer(data_.login,
+                                                                 data_.password,
+                                                                 1);
+
     emit authFinish(error);
 }
 
-void SystemManager::connectToServer()
-{
-    networkManager__->connectToServer("127.0.0.1", 12345);
-}
 
 void SystemManager::sendMessage(const QString &message)
 {

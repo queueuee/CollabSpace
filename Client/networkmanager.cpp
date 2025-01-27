@@ -1,37 +1,32 @@
+
 #include "networkmanager.h"
+#include "../possible_requests.h"
+
+
 #include <QMessageBox>
 #include <QHostAddress>
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDateTime>
+#include <QTimer>
+
+#define COLLAB_SPACE_URL "ws://127.0.0.1:12345"
+#define COLLAB_SPACE_UDP_PORT 54321
+
 
 NetworkManager::NetworkManager(QObject *parent)
     : QObject(parent),
-    tcpSocket__(new QTcpSocket(this)),
+    webSocket__(new QWebSocket),
     udpSocket__(new QUdpSocket(this)),
     audioInputDevice__(nullptr),
     audioOutputDevice__(nullptr),
     microphoneEnabled__(true),
     headphonesEnabled__(true)
 {
-    connect(tcpSocket__, &QTcpSocket::readyRead, this, [this]()
-    {
-        QByteArray data = tcpSocket__->readAll();
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
-        if (jsonDoc.isObject())
-        {
-            QJsonObject messageJson = jsonDoc.object();
-            QString userName = messageJson.value("userName").toString();
-            QString content = messageJson.value("content").toString();
-            QString timestamp = messageJson.value("timestamp").toString();
-            emit messageReceived(userName, content, timestamp);
-        }
-        else
-        {
-            qWarning() << "Invalid message format received.";
-        }
-    });
+    connect(webSocket__, &QWebSocket::connected, this, &NetworkManager::onConnected);
+    connect(webSocket__, &QWebSocket::disconnected, this, &NetworkManager::onDisconnected);
+    connect(webSocket__, &QWebSocket::textMessageReceived, this, &NetworkManager::onJsonAnswerReceived);
 }
 
 NetworkManager::~NetworkManager()
@@ -42,36 +37,124 @@ NetworkManager::~NetworkManager()
     if (audioOutputDevice__) {
         audioOutputDevice__->close();
     }
+    webSocket__->close();
     udpSocket__->close();
+    webSocket__->deleteLater();
     udpSocket__->deleteLater();
-    tcpSocket__->close();
-    tcpSocket__->deleteLater();
 }
 
-void NetworkManager::connectToServer(const QString &host, quint16 port)
+QString NetworkManager::connectToCollabSpaceServer(const QString &login_,
+                                                   const QString &passwordHash_,
+                                                   const int &status_)
 {
-    tcpSocket__->connectToHost(QHostAddress(host), port);
-    if (tcpSocket__->waitForConnected(2000)) {
-        emit connectionSuccess();
-    } else {
-        emit connectionFailed();
+    QEventLoop loop;
+    QString responseError;
+
+    connect(this, &NetworkManager::jsonAnswerReceived, [&loop, &responseError](const QString &message_) {
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(message_.toUtf8());
+        responseError = jsonDoc.object().value(TYPE).toString();
+        loop.quit();
+    });
+
+    webSocket__->open(QUrl(COLLAB_SPACE_URL));
+
+    QJsonObject messageJson{
+        {REQUEST, LOGIN_USER},
+        {"login", login_},
+        {"passwordHash", passwordHash_},
+        {"status", QString::number(status_)}
+    };
+    QByteArray data = QJsonDocument(messageJson).toJson();
+
+    QTimer::singleShot(10, this, [this, data]()
+    {
+        webSocket__->sendTextMessage(QString::fromUtf8(data));
+    });
+
+    loop.exec();
+
+    return responseError;
+}
+
+void printJson(const QJsonDocument &doc)
+{
+    // Проверяем, является ли JSON объектом или массивом
+    if (doc.isObject()) {
+        // Выводим JSON объект в строковом формате
+        qDebug() << "JSON Object:" << doc.object();
+    }
+    else {
+        qDebug() << "Invalid JSON format.";
     }
 }
 
 void NetworkManager::sendMessage(const QString &userName, const QString &message)
 {
-    if (!message.isEmpty() && tcpSocket__->state() == QTcpSocket::ConnectedState) {
+    const int server_id = 0, channel_id = 0;
+
+    if (!message.isEmpty()) {
         QJsonObject messageJson{
-            {"type", "text_message"},
-            {"server_id", "0"},
-            {"chat_id", "0"},
+            {REQUEST, MESSAGE},
+            {TYPE, TEXT},
+            {"server_id", server_id},
+            {"chat_id", channel_id},
             {"userName", userName},
             {"content", message},
             {"timestamp", QDateTime::currentDateTime().toString(Qt::ISODate)}
         };
         QByteArray data = QJsonDocument(messageJson).toJson();
-        tcpSocket__->write(data);
+        webSocket__->sendTextMessage(QString::fromUtf8(data));
+        printJson(QJsonDocument(messageJson));
     }
+}
+void NetworkManager::onConnected()
+{
+    emit connectionSuccess();
+}
+
+void NetworkManager::onDisconnected()
+{
+    emit connectionFailed();
+}
+
+void NetworkManager::onJsonAnswerReceived(const QString &message_)
+{
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(message_.toUtf8());
+    printJson(QJsonDocument(jsonDoc));
+    if (jsonDoc.isObject())
+    {
+        QJsonObject messageJson = jsonDoc.object();
+        parseJson(messageJson);
+
+
+        emit jsonAnswerReceived(message_);
+    }
+    else
+    {
+        qWarning() << "Invalid message format received.";
+    }
+}
+
+// Заменить if на switch
+void NetworkManager::parseJson(QJsonObject &messageJson_)
+{
+    auto request_type = messageJson_.value(REQUEST).toString();
+    if (request_type == MESSAGE)
+    {
+        auto message_type = messageJson_.value(TYPE).toString();
+        if (message_type == TEXT)
+        {
+            QString userName = messageJson_.value("userName").toString();
+            QString content = messageJson_.value("content").toString();
+            QString timestamp = messageJson_.value("timestamp").toString();
+
+            emit textMessageReceived(userName, content, timestamp);
+
+            return;
+        }
+        qWarning() << "Invalid message type:"<< message_type;
+    }
+
 }
 
 void NetworkManager::setupAudioFormat()
@@ -94,8 +177,7 @@ void NetworkManager::startVoiceChat()
     audioInput__.reset(new QAudioInput(format, this));
     audioOutput__.reset(new QAudioOutput(format, this));
 
-    udpSocket__ = new QUdpSocket(this);
-    udpSocket__->bind(QHostAddress::AnyIPv4, quint16(0), QAbstractSocket::ShareAddress | QAbstractSocket::ReuseAddressHint);
+    udpSocket__->bind(QHostAddress::AnyIPv4, COLLAB_SPACE_UDP_PORT, QAbstractSocket::ShareAddress | QAbstractSocket::ReuseAddressHint);
 
     audioInputDevice__ = audioInput__->start();
     audioOutputDevice__ = audioOutput__->start();
@@ -111,13 +193,10 @@ void NetworkManager::leaveVoiceChat()
     if (!voiceChatActive__)
         return;
 
-    udpSocket__->writeDatagram("DISCONNECT", QHostAddress("127.0.0.1"), 54321);
+    udpSocket__->writeDatagram("DISCONNECT", QHostAddress::LocalHost, COLLAB_SPACE_UDP_PORT);
 
     onOffAudioOutput(false);
     onOffAudioInput(false);
-
-    disconnect(udpSocket__, &QUdpSocket::readyRead, this, &NetworkManager::readUdpAudio);
-    udpSocket__->close();
 
     voiceChatActive__ = false;
 }
@@ -128,36 +207,19 @@ void NetworkManager::sendAudio()
         return;
 
     QByteArray audioData = audioInputDevice__->readAll();
-    udpSocket__->writeDatagram(audioData, QHostAddress("127.0.0.1"), 54321);
+    udpSocket__->writeDatagram(audioData, QHostAddress::LocalHost, COLLAB_SPACE_UDP_PORT);
 }
 
 void NetworkManager::readUdpAudio()
 {
     if (!headphonesEnabled__ || !audioOutputDevice__)
-    {
-        if (udpSocket__)
-        {
-            while (udpSocket__->hasPendingDatagrams())
-            {
-                QByteArray buffer;
-                buffer.resize(udpSocket__->pendingDatagramSize());
-                udpSocket__->readDatagram(buffer.data(), buffer.size());
-            }
-        }
         return;
-    }
 
-    while (udpSocket__->hasPendingDatagrams())
-    {
-        QByteArray buffer;
-        buffer.resize(udpSocket__->pendingDatagramSize());
-
-        qint64 bytesRead = udpSocket__->readDatagram(buffer.data(), buffer.size());
-
-        if (!buffer.isEmpty())
-        {
-            qint64 bytesWritten = audioOutputDevice__->write(buffer);
-        }
+    while (udpSocket__->hasPendingDatagrams()) {
+        QByteArray audioData;
+        audioData.resize(udpSocket__->pendingDatagramSize());
+        udpSocket__->readDatagram(audioData.data(), audioData.size());
+        audioOutputDevice__->write(audioData);
     }
 }
 
@@ -186,10 +248,6 @@ void NetworkManager::onOffAudioOutput(bool audioOn_)
             audioInput__->stop();
             audioInputDevice__ = nullptr;
         }
-        if (!audioOn_ && !audioInput__.isNull())
-        {
-            audioInput__.reset();
-        }
     }
     else
     {
@@ -197,39 +255,25 @@ void NetworkManager::onOffAudioOutput(bool audioOn_)
         audioInputDevice__ = audioInput__->start();
         connect(audioInputDevice__, &QIODevice::readyRead, this, &NetworkManager::sendAudio);
     }
-
 }
 
 void NetworkManager::onOffAudioInput(bool audioOn_)
 {
     if (audioOutput__)
     {
-        qDebug() << "Stopping audio output.";
         audioOutput__->stop();
         audioOutput__.reset();
     }
 
     if (!audioOn_)
     {
-        if (udpSocket__)
-        {
-            while (udpSocket__->hasPendingDatagrams())
-            {
-                QByteArray buffer;
-                buffer.resize(udpSocket__->pendingDatagramSize());
-                udpSocket__->readDatagram(buffer.data(), buffer.size());
-            }
-            qDebug() << "UDP socket buffer cleared.";
-        }
         audioOutputDevice__ = nullptr;
-        qDebug() << "Headphones disabled, audio output device set to null.";
     }
     else
     {
         audioOutput__.reset(new QAudioOutput(format, this));
         audioOutputDevice__ = audioOutput__->start();
     }
-
 }
 
 bool NetworkManager::isMicrophoneEnabled() const
@@ -242,9 +286,9 @@ bool NetworkManager::areHeadphonesEnabled() const
     return headphonesEnabled__;
 }
 
-QTcpSocket* NetworkManager::getTcpSocket() const
+QWebSocket* NetworkManager::getWebSocket() const
 {
-    return tcpSocket__;
+    return webSocket__;
 }
 
 QUdpSocket* NetworkManager::getUdpSocket() const

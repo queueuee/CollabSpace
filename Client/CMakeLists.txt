@@ -9,7 +9,12 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5 REQUIRED COMPONENTS Core Widgets Network Multimedia)
+find_package(Qt5 REQUIRED COMPONENTS Core
+                                     Widgets
+                                     Network
+                                     Multimedia
+                                     Sql
+                                     WebSockets)
 
 # Определение исходных файлов
 set(PROJECT_SOURCES
@@ -17,8 +22,6 @@ set(PROJECT_SOURCES
     clientmain.cpp
     clientmain.h
     clientmain.ui
-
-
 )
 
 # Создание исполняемого файла
@@ -30,7 +33,7 @@ add_executable(Client ${PROJECT_SOURCES}
 )
 
 # Привязка библиотек к целевой программе
-target_link_libraries(Client PRIVATE Qt5::Core Qt5::Widgets Qt5::Network Qt5::Multimedia)
+target_link_libraries(Client PRIVATE Qt5::Core Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::WebSockets)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

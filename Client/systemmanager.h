@@ -3,12 +3,18 @@
 
 #include "networkmanager.h"
 
-
 #include <QObject>
 #include <QDebug>
 #include <QMessageBox>
+#include <QMessageBox>
 
-struct dbAuthData
+#include <QtSql/QSqlDatabase>
+#include <QtSql/QSqlQuery>
+#include <QtSql/QSqlError>
+
+
+
+struct loginAuthData
 {
     QString login = "";
     QString password = "";
@@ -31,12 +37,9 @@ public:
     // заглушка, пока нет бд
     QString userLogin;
 
-    void startAuth(dbAuthData data_);
+    void startAuth(loginAuthData data_);
 
 private:
-    void connectToServer();
-
-
     // Управление передачей сообщений
     NetworkManager                                  *networkManager__;
 

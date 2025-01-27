@@ -35,7 +35,6 @@ void Authorization::on_connectBtn_clicked()
         return;
     }
 
-    // В конструкторе буду передавать бд
     systemManager__ = new SystemManager();
     connect(systemManager__, &SystemManager::authFinish, this, &Authorization::authFinished);
 
@@ -53,7 +52,7 @@ void Authorization::on_cancelBtn_clicked()
 void Authorization::authFinished(QString error_)
 {
     disableFieldsOnAuthProcess(true);
-    if (error_.isEmpty())
+    if (error_ == "ok")
         accept();
     else
         showWarningMessage(error_);
