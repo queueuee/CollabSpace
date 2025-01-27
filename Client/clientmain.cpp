@@ -10,6 +10,8 @@ ClientMain::ClientMain(QWidget *parent)
     systemManager__(nullptr)
 {
     ui__->setupUi(this);
+    ui__->voiceDisconnectButton->setVisible(false);
+
     ui__->tabWidget->tabBar()->setTabVisible(0, false);
     // Авторизация
     QTimer::singleShot(50, this, [this](){
@@ -55,12 +57,18 @@ void ClientMain::startVoiceChat()
 {
     systemManager__ -> startVoiceChat();
     ui__->chatWindow->append("Voice chat started.");
+
+    ui__->voiceDisconnectButton->setVisible(true);
+    ui__->voiceConnectButton->setVisible(false);
 }
 
 void ClientMain::leaveVoiceChat()
 {
     systemManager__->leaveVoiceChat();
     ui__->chatWindow->append("Voice chat stopped.");
+
+    ui__->voiceDisconnectButton->setVisible(false);
+    ui__->voiceConnectButton->setVisible(true);
 }
 
 void ClientMain::on_micOnOffButton_clicked()
