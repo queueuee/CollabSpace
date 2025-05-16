@@ -9,6 +9,9 @@
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
+
+
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
@@ -34,13 +37,20 @@ signals:
 private:
     QSqlDatabase *db__;
     QWebSocketServer *webSocketServer;
-    QSet<QWebSocket *> clientsWebSocket;
+    QMap<QWebSocket *, int> clientsWebSocket;
+    QSet<int> user_ids_to_send;
     QUdpSocket *udpSocket;
     QHash<QString, QPair<QHostAddress, quint16>> clientsUDP;
 
     void parseJson(QJsonObject &messageJson_);
     void broadcastMessage(const QJsonObject &message, QWebSocket *excludeSocket = nullptr);
     void broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort);
+    QJsonObject generateResponse(bool is_positive, const QJsonObject &response_params);
+    QJsonObject generateResponse(bool is_positive_, const QString requestType_, const QJsonObject &response_params_);
+    bool insertChannel(int server_id, int owner_id, const QString& name, bool is_voice, QJsonArray& channels_info);
+    QJsonObject messageToJson(const QString &userName_,
+                              const QString &content_,
+                              const QString &timestamp_);
 };
 
 #endif // CHATSERVER_H
