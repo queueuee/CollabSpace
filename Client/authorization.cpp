@@ -1,8 +1,12 @@
 #include "authorization.h"
+#include "../possible_requests.h"
 
-Authorization::Authorization(SystemManager*& systemManager_, QWidget *parent)
+#define COLLAB_SPACE_URL "ws://127.0.0.1:12345"
+
+
+Authorization::Authorization(NetworkManager* networkManager_, QWidget *parent)
     : QDialog(parent)
-    , systemManager__(systemManager_)
+    , networkManager__(networkManager_)
     , ui__(new Ui::Authorization)
 {
     ui__->setupUi(this);
@@ -35,13 +39,13 @@ void Authorization::on_connectBtn_clicked()
         return;
     }
 
-    systemManager__ = new SystemManager();
-    connect(systemManager__, &SystemManager::authFinish, this, &Authorization::authFinished);
+    connect(networkManager__, &NetworkManager::getAuthToken, this, &Authorization::authFinished);
 
-    disableFieldsOnAuthProcess(false);
+    enableFieldsOnAuthProcess(false);
+    userData__.login = ui__->loginCheck->text();
+    userData__.password = ui__->passCheck->text();
 
-    systemManager__->startAuth({ui__->loginCheck->text(), ui__->passCheck->text()});
-    accept();
+    networkManager__->connectToServer(userData__.login, userData__.password, QUrl(COLLAB_SPACE_URL), 1);
 }
 
 void Authorization::on_cancelBtn_clicked()
@@ -49,16 +53,37 @@ void Authorization::on_cancelBtn_clicked()
     reject();
 }
 
-void Authorization::authFinished(QString error_)
+void Authorization::authFinished(const QJsonObject &userData)
 {
-    disableFieldsOnAuthProcess(true);
-    if (error_ == "ok")
+    qDebug() << userData;
+    QString error;
+    if(userData.value(TYPE).toString().trimmed() == OK)
+    {
+        QJsonObject info = userData.value(INFO).toObject();
+        userData__.user_id = info.value("user_id").toInt();
+
+        error = "";
+    }
+    else
+    {
+        QJsonObject infoObject= userData.value(INFO).toObject();
+        QJsonDocument doc(infoObject);
+
+        error = doc.toJson(QJsonDocument::Compact);
+    }
+
+    enableFieldsOnAuthProcess(true);
+    if (error.isEmpty())
         accept();
     else
-        showWarningMessage(error_);
+    {
+        showWarningMessage(error);
+        qDebug() << error;
+        reject();
+    }
 }
 
-void Authorization::disableFieldsOnAuthProcess(bool enable_)
+void Authorization::enableFieldsOnAuthProcess(bool enable_)
 {
     ui__->loginCheck->setEnabled(enable_);
     ui__->passCheck->setEnabled(enable_);

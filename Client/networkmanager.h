@@ -18,10 +18,11 @@ public:
     explicit NetworkManager(QObject *parent = nullptr);
     ~NetworkManager();
 
-    QString connectToCollabSpaceServer(const QString &login_,
-                                       const QString &passwordHash_,
-                                       const int &status_);
-    void sendMessage(const QString &userName, const QString &message);
+    void connectToServer(const QString &login_,
+                        const QString &passwordHash_,
+                        const QUrl &Url_,
+                        const int &status_);
+    void sendMessageJsonToServer(QJsonObject &messageJson);
     void startVoiceChat();
     void leaveVoiceChat();
     void onOffHeadphones(bool);
@@ -33,13 +34,25 @@ public:
     QWebSocket* getWebSocket() const;
     QUdpSocket* getUdpSocket() const;
 
+    void parseJson(QJsonObject &message);
+
 signals:
     void connectionSuccess();
     void connectionFailed();
-    void textMessageReceived(const QString &userName,
+    void getAuthToken(const QJsonObject &loginData);
+    void textMessageReceived(int server_id,
+                             int channel_id,
+                             const QString &userName,
                              const QString &content,
                              const QString &timestamp);
-    void jsonAnswerReceived(const QString &message_);
+    void createServer(const QJsonObject &frame);
+    void userServerListRecived(const QJsonObject &userServerList);
+    void openServerListRecived(const QJsonObject &openServerList);
+    void joinToServerAnswer(const QJsonObject &answer);
+    void deleteServerAnswer(const QJsonObject &answer);
+    void leaveServerAnswer(const QJsonObject &answer);
+    void serverParticipantsList(const QJsonObject &answer);
+
 private slots:
     void sendAudio();
     void readUdpAudio();
@@ -51,7 +64,7 @@ private:
     void setupAudioFormat();
     void onOffAudioOutput(bool);
     void onOffAudioInput(bool);
-    void parseJson(QJsonObject &message);
+
 
     QWebSocket                                      *webSocket__;
     QUdpSocket                                      *udpSocket__;
@@ -60,6 +73,7 @@ private:
     QIODevice                                       *audioInputDevice__;
     QIODevice                                       *audioOutputDevice__;
     QAudioFormat                                    format;
+
 
     bool                                            microphoneEnabled__ = true;
     bool                                            headphonesEnabled__ = true;

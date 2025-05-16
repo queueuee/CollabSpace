@@ -11,7 +11,6 @@
 #include <QDateTime>
 #include <QTimer>
 
-#define COLLAB_SPACE_URL "ws://127.0.0.1:12345"
 #define COLLAB_SPACE_UDP_PORT 54321
 
 
@@ -42,73 +41,32 @@ NetworkManager::~NetworkManager()
     webSocket__->deleteLater();
     udpSocket__->deleteLater();
 }
-
-QString NetworkManager::connectToCollabSpaceServer(const QString &login_,
-                                                   const QString &passwordHash_,
-                                                   const int &status_)
+QJsonObject messageJson;
+void NetworkManager::connectToServer(const QString &login_,
+                                            const QString &passwordHash_,
+                                            const QUrl &Url_,
+                                            const int &status_)
 {
-    QEventLoop loop;
-    QString responseError;
+    webSocket__->open(Url_);
 
-    connect(this, &NetworkManager::jsonAnswerReceived, [&loop, &responseError](const QString &message_) {
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(message_.toUtf8());
-        responseError = jsonDoc.object().value(TYPE).toString();
-        loop.quit();
-    });
-
-    webSocket__->open(QUrl(COLLAB_SPACE_URL));
-
-    QJsonObject messageJson{
+    messageJson = {
         {REQUEST, LOGIN_USER},
         {"login", login_},
         {"passwordHash", passwordHash_},
         {"status", QString::number(status_)}
     };
+
+}
+
+void NetworkManager::sendMessageJsonToServer(QJsonObject &messageJson)
+{
     QByteArray data = QJsonDocument(messageJson).toJson();
-
-    QTimer::singleShot(10, this, [this, data]()
-    {
-        webSocket__->sendTextMessage(QString::fromUtf8(data));
-    });
-
-    loop.exec();
-
-    return responseError;
-}
-
-void printJson(const QJsonDocument &doc)
-{
-    // Проверяем, является ли JSON объектом или массивом
-    if (doc.isObject()) {
-        // Выводим JSON объект в строковом формате
-        qDebug() << "JSON Object:" << doc.object();
-    }
-    else {
-        qDebug() << "Invalid JSON format.";
-    }
-}
-
-void NetworkManager::sendMessage(const QString &userName, const QString &message)
-{
-    const int server_id = 0, channel_id = 0;
-
-    if (!message.isEmpty()) {
-        QJsonObject messageJson{
-            {REQUEST, MESSAGE},
-            {TYPE, TEXT},
-            {"server_id", server_id},
-            {"chat_id", channel_id},
-            {"userName", userName},
-            {"content", message},
-            {"timestamp", QDateTime::currentDateTime().toString(Qt::ISODate)}
-        };
-        QByteArray data = QJsonDocument(messageJson).toJson();
-        webSocket__->sendTextMessage(QString::fromUtf8(data));
-        printJson(QJsonDocument(messageJson));
-    }
+    webSocket__->sendTextMessage(QString::fromUtf8(data));
 }
 void NetworkManager::onConnected()
 {
+    sendMessageJsonToServer(messageJson);
+
     emit connectionSuccess();
 }
 
@@ -120,14 +78,10 @@ void NetworkManager::onDisconnected()
 void NetworkManager::onJsonAnswerReceived(const QString &message_)
 {
     QJsonDocument jsonDoc = QJsonDocument::fromJson(message_.toUtf8());
-    printJson(QJsonDocument(jsonDoc));
     if (jsonDoc.isObject())
     {
         QJsonObject messageJson = jsonDoc.object();
         parseJson(messageJson);
-
-
-        emit jsonAnswerReceived(message_);
     }
     else
     {
@@ -135,27 +89,60 @@ void NetworkManager::onJsonAnswerReceived(const QString &message_)
     }
 }
 
-// Заменить if на switch
 void NetworkManager::parseJson(QJsonObject &messageJson_)
 {
-    auto request_type = messageJson_.value(REQUEST).toString();
-    if (request_type == MESSAGE)
+    QString request_type = messageJson_.value(REQUEST).toString();
+
+    if (request_type == LOGIN_USER)
     {
-        auto message_type = messageJson_.value(TYPE).toString();
-        if (message_type == TEXT)
-        {
-            QString userName = messageJson_.value("userName").toString();
-            QString content = messageJson_.value("content").toString();
-            QString timestamp = messageJson_.value("timestamp").toString();
+        emit getAuthToken(messageJson_);
+    }
+    else if (request_type == MESSAGE)
+    {
+        int channel_id = messageJson_.value("channel_id").toInt();
+        int server_id = messageJson_.value("server_id").toInt();
+        QJsonObject messagesObj = messageJson_.value("message").toObject();
 
-            emit textMessageReceived(userName, content, timestamp);
+        for (const QString &msg_id : messagesObj.keys()) {
+            QJsonObject messageData = messagesObj.value(msg_id).toObject();
+            QString userName = messageData.value("user_name").toString();
+            QString content = messageData.value("content").toString();
+            QString timestamp = messageData.value("timestamp").toString();
 
-            return;
+            emit textMessageReceived(server_id, channel_id, userName, content, timestamp);
         }
-        qWarning() << "Invalid message type:"<< message_type;
+    }
+    else if(request_type == GET_USER_SERVERS_LIST)
+    {
+        emit userServerListRecived(messageJson_["info"].toObject());
+    }
+    else if(request_type == GET_OPEN_SERVERS_LIST)
+    {
+        emit openServerListRecived(messageJson_["info"].toObject());
+    }
+    else if (request_type == CREATE_SERVER)
+    {
+        emit createServer(messageJson_["info"].toObject());
+    }
+    else if(request_type == JOIN_SERVER)
+    {
+        emit joinToServerAnswer(messageJson_["info"].toObject());
+    }
+    else if(request_type == DELETE_SERVER)
+    {
+        emit deleteServerAnswer(messageJson_["info"].toObject());
+    }
+    else if(request_type == USER_LEAVE_SERVER_INFO)
+    {
+        emit leaveServerAnswer(messageJson_["info"].toObject());
+    }
+    else if(request_type == GET_SERVER_PARTICIPANTS_LIST)
+    {
+        emit serverParticipantsList(messageJson_["info"].toObject());
     }
 
 }
+
 
 void NetworkManager::setupAudioFormat()
 {
