@@ -140,6 +140,10 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
     {
         emit serverParticipantsList(messageJson_["info"].toObject());
     }
+    else if(request_type == UPDATE_USER)
+    {
+        emit updateUser(messageJson_["info"].toObject());
+    }
 
 }
 

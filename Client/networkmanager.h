@@ -52,6 +52,7 @@ signals:
     void deleteServerAnswer(const QJsonObject &answer);
     void leaveServerAnswer(const QJsonObject &answer);
     void serverParticipantsList(const QJsonObject &answer);
+    void updateUser(const QJsonObject &answer);
 
 private slots:
     void sendAudio();

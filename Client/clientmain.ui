@@ -758,7 +758,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <customwidget>
    <class>CustomTabWidget</class>
    <extends>QTabWidget</extends>
-   <header location="global">clientmain.h</header>
+   <header location="global">../../../../clientmain.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -42,6 +42,7 @@ private slots:
     void on_leaveServerAnswer(const QJsonObject &response);
     void on_deleteServerAnswer(const QJsonObject &response);
     void on_serverParticipantsList(const QJsonObject &response);
+    void on_updateUser(const QJsonObject &response);
 
     void on_joinServer(int id);
 
@@ -67,6 +68,7 @@ private:
     void getOpenServerList();
     void getServerParticipantsList(int id_);
     void clearOpenServers();
+    void logOut();
 
     UserData                                        userData__;
     int                                             messages_to_download__;

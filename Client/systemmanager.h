@@ -48,6 +48,7 @@ public:
 
     QWidget* getMainWidget() { return mainWidget__; };
     UserState getState() {return state__;};
+    void setState(UserState status_) { state__ = status_; emit statusUpdate(mainWidget__, state__);};
     int getId() { return id__; };
 private:
     int id__;
@@ -64,6 +65,9 @@ private:
     UserState state__;
 
     QWidget* mainWidget__;
+
+signals:
+    void statusUpdate(QWidget*, UserState);
 };
 
 class HorizontalTabStyle : public QProxyStyle
@@ -186,6 +190,7 @@ public:
     void leaveServer() { emit leaveServerSignal(id__); };
     bool canDeleteServer() { return is_highest_perm__; };
     void participantAdd(Participant *user_);
+    void participantUpdateStatus(int user_id_, UserState status_);
 
 private:
     QVBoxLayout                                 *onlineLayout__;
@@ -197,17 +202,19 @@ private:
     int                                         user_perm__;
     int                                         admin_perm__;
     QMap<int, Channel*>                         channels__;
-    QMap<int, Participant*>                      participants__;
+    QMap<int, Participant*>                     participants__;
 
 
     QGroupBox *createParticipantsGroup();
-
 
 signals:
     void sendMessageFromChannel(int channel_id_, int type_, const QString &message_);
     void getMessagesList(int channel_id_);
     void deleteServerSignal(int id_);
     void leaveServerSignal(int id_);
+
+private slots:
+    void on_userStatusUpdate(QWidget*, UserState);
 };
 
 

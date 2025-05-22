@@ -329,6 +329,9 @@ void Server::participantAdd(Participant *user_)
     }
 
     participants__[user_->getId()] = user_;
+
+    connect(user_, &Participant::statusUpdate, this, &Server::on_userStatusUpdate);
+
     switch(user_->getState()){
     case UserState::Online:
         onlineLayout__->addWidget(user_->getMainWidget());
@@ -337,6 +340,14 @@ void Server::participantAdd(Participant *user_)
         offlineLayout__->addWidget(user_->getMainWidget());
         break;
     }
+}
+
+void Server::participantUpdateStatus(int user_id_, UserState status_)
+{
+    if (!participants__.contains(user_id_))
+        return;
+
+    participants__[user_id_]->setState(status_);
 }
 
 QGroupBox *Server::createParticipantsGroup() {
@@ -359,6 +370,32 @@ QGroupBox *Server::createParticipantsGroup() {
     return groupBox;
 }
 
+void Server::on_userStatusUpdate(QWidget* userWidget_, UserState state_)
+{
+    for (int i = 0; i < onlineLayout__->count(); ++i) {
+        if (onlineLayout__->itemAt(i)->widget() == userWidget_) {
+            onlineLayout__->removeWidget(userWidget_);
+            break;
+        }
+    }
+
+    for (int i = 0; i < offlineLayout__->count(); ++i) {
+        if (offlineLayout__->itemAt(i)->widget() == userWidget_) {
+            offlineLayout__->removeWidget(userWidget_);
+            break;
+        }
+    }
+
+    switch(state_){
+    case UserState::Online:
+        onlineLayout__->addWidget(userWidget_);
+        break;
+    default:
+        offlineLayout__->addWidget(userWidget_);
+        break;
+    }
+
+}
 
 Channel::Channel(int id_,
                  int compadres_id_,

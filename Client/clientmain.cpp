@@ -22,6 +22,7 @@ ClientMain::ClientMain(QWidget *parent)
     connect(networkManager__, &NetworkManager::leaveServerAnswer, this, &ClientMain::on_leaveServerAnswer);
     connect(networkManager__, &NetworkManager::deleteServerAnswer, this, &ClientMain::on_deleteServerAnswer);
     connect(networkManager__, &NetworkManager::serverParticipantsList, this, &ClientMain::on_serverParticipantsList);
+    connect(networkManager__, &NetworkManager::updateUser, this, &ClientMain::on_updateUser);
 
     // Авторизация
     Authorization auth(networkManager__);
@@ -48,6 +49,7 @@ ClientMain::ClientMain(QWidget *parent)
 
 ClientMain::~ClientMain()
 {
+    logOut();
     delete ui__;
 }
 
@@ -178,6 +180,16 @@ void ClientMain::clearOpenServers()
     }
     openServers__.clear();
     getOpenServerList();
+}
+
+void ClientMain::logOut()
+{
+    QJsonObject logoutRequest{
+        {REQUEST, LOGOUT_USER},
+        {"user_id", userData__.user_id},
+    };
+
+    networkManager__->sendMessageJsonToServer(logoutRequest);
 }
 
 
@@ -348,6 +360,14 @@ void ClientMain::on_serverParticipantsList(const QJsonObject &info)
                                             participantInfo["user_login"].toString(),
                                             (UserState)participantInfo["user_status"].toInt());
         userServers__[info["server_id"].toInt()]->participantAdd(user);
+    }
+}
+
+void ClientMain::on_updateUser(const QJsonObject &response)
+{
+    for (auto& server : userServers__)
+    {
+        server->participantUpdateStatus(response["user_id"].toInt(), (UserState)response["status"].toInt());
     }
 }
 

@@ -70,6 +70,8 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         qWarning() << "Invalid message format";
         return;
     }
+    QSet<int> user_ids_to_send;
+
     QSqlQuery query;
     QString queryStr;
     QJsonObject messageJsonToSend;
@@ -151,7 +153,6 @@ void ChatServer::handleWebSocketMessage(const QString &message)
                 qWarning() << "User not found for ID:" << sender_id;
 
             messageJsonToSend["message"] = msg;
-            qDebug() << messageJsonToSend;
         }
         else
         {
@@ -163,6 +164,7 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         QString login = messageJson.value("login").toString();
         QString passwordHash = messageJson.value("passwordHash").toString();
         int status = messageJson.value("status").toInt();
+        int user_id = -1;
 
         QSqlQuery query;
         query.prepare("SELECT id FROM Users WHERE login = :login AND password_hash = :password_hash");
@@ -171,15 +173,110 @@ void ChatServer::handleWebSocketMessage(const QString &message)
 
         if (query.exec() && query.next())
         {
-            int user_id = query.value(0).toInt();
+            user_id = query.value(0).toInt();
             clientsWebSocket[senderSocket] = user_id;
 
+            user_ids_to_send.insert(user_id);
             messageJsonToSend = generateResponse(true, LOGIN_USER, {{"user_id", user_id}});
+
+            query.clear();
+            query.prepare("UPDATE users SET status = :status WHERE id = :user_id;");
+            query.bindValue(":status", userStatus::online);
+            query.bindValue(":user_id", user_id);
+            query.exec();
         }
         else
         {
             messageJsonToSend = generateResponse(false, LOGIN_USER, {{ERROR, "Invalid login or password"}});
         }
+
+        broadcastMessage(messageJsonToSend, user_ids_to_send);
+        user_ids_to_send.clear();
+
+        query.clear();
+        query.prepare(R"(SELECT DISTINCT
+                            CASE
+                                WHEN c.user1_id = :user_id THEN c.user2_id
+                                ELSE c.user1_id
+                            END AS related_user_id,
+                            c.id AS compadres_id,
+                            NULL::INT AS server_id
+                         FROM Compadres c
+                         WHERE c.user1_id = :user_id OR c.user2_id = :user_id
+
+                         UNION
+
+                         SELECT DISTINCT
+                            sur2.user_id AS related_user_id,
+                            NULL::INT AS compadres_id,
+                            sur1.server_id
+                         FROM Server_User_relation sur1
+                         JOIN Server_User_relation sur2 ON sur1.server_id = sur2.server_id
+                         WHERE sur1.user_id = :user_id AND sur2.user_id != :user_id;)");
+        query.bindValue(":user_id", user_id);
+        query.exec();
+        while(query.next())
+        {
+            user_ids_to_send.insert(query.value("related_user_id").toInt());
+            qDebug() << query.value("server_id") << query.value("compadres_id") << query.value("related_user_id");
+        }
+
+        QJsonObject response{
+            {"user_id", user_id},
+            {"status", userStatus::online}
+        };
+        messageJsonToSend = generateResponse(true, UPDATE_USER, response);
+
+        broadcastMessage(messageJsonToSend, user_ids_to_send);
+
+        return;
+    }
+    else if(request_type == LOGOUT_USER)
+    {
+        int user_id = messageJson.value("user_id").toInt();
+
+        QSqlQuery query;
+        query.prepare("UPDATE users SET status = :status WHERE id = :user_id;");
+        query.bindValue(":status", userStatus::offline);
+        query.bindValue(":user_id", user_id);
+        query.exec();
+
+        query.clear();
+        query.prepare(R"(SELECT DISTINCT
+                            CASE
+                                WHEN c.user1_id = :user_id THEN c.user2_id
+                                ELSE c.user1_id
+                            END AS related_user_id,
+                            c.id AS compadres_id,
+                            NULL::INT AS server_id
+                         FROM Compadres c
+                         WHERE c.user1_id = :user_id OR c.user2_id = :user_id
+
+                         UNION
+
+                         SELECT DISTINCT
+                            sur2.user_id AS related_user_id,
+                            NULL::INT AS compadres_id,
+                            sur1.server_id
+                         FROM Server_User_relation sur1
+                         JOIN Server_User_relation sur2 ON sur1.server_id = sur2.server_id
+                         WHERE sur1.user_id = :user_id AND sur2.user_id != :user_id;)");
+        query.bindValue(":user_id", user_id);
+        query.exec();
+        while(query.next())
+        {
+            user_ids_to_send.insert(query.value("related_user_id").toInt());
+            qDebug() << query.value("server_id") << query.value("compadres_id") << query.value("related_user_id");
+        }
+
+        QJsonObject response{
+            {"user_id", user_id},
+            {"status", userStatus::offline}
+        };
+        messageJsonToSend = generateResponse(true, UPDATE_USER, response);
+
+        broadcastMessage(messageJsonToSend, user_ids_to_send);
+        return;
     }
     else if(request_type == CREATE_SERVER)
     {
@@ -188,6 +285,8 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         QString desc = messageJson.value("description").toString();
         int num_of_voice = messageJson.value("num_of_voice").toInt();
         int num_of_text = messageJson.value("num_of_text").toInt();
+
+        user_ids_to_send.insert(owner_id);
 
         bool is_open = messageJson.value("is_open").toBool();
         QString iconImg = messageJson.value("iconImg").toString();
@@ -232,9 +331,6 @@ void ChatServer::handleWebSocketMessage(const QString &message)
                 {REQUEST, CREATE_SERVER},
                 {INFO, response_params}
             };
-
-            if (is_open)
-                user_ids_to_send.clear();
         }
         else
         {
@@ -439,7 +535,7 @@ void ChatServer::handleWebSocketMessage(const QString &message)
     {
         int server_id = messageJson.value("server_id").toInt();
         int user_id = messageJson.value("user_id").toInt();
-
+        user_ids_to_send.insert(user_id);
         QJsonObject response_params;
         QSqlQuery query;
         query.clear();
@@ -523,7 +619,7 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         messageJsonToSend = generateResponse(true, GET_SERVER_PARTICIPANTS_LIST, response);
     }
 
-    broadcastMessage(messageJsonToSend, senderSocket);
+    broadcastMessage(messageJsonToSend, user_ids_to_send);
 }
 
 bool ChatServer::insertChannel(int server_id, int owner_id, const QString& name, bool is_voice, QJsonArray& channels_info)
@@ -613,26 +709,19 @@ void ChatServer::handleUdpData() {
     }
 }
 
-void ChatServer::broadcastMessage(const QJsonObject &message, QWebSocket *excludeSocket)
+void ChatServer::broadcastMessage(const QJsonObject &message, QSet<int> user_ids_to_send_)
 {
     QByteArray data = QJsonDocument(message).toJson();
-    if(message.value(REQUEST) == LOGIN_USER)
-    {
-        excludeSocket->sendTextMessage(QString::fromUtf8(data));
-        return;
-    }
     for (auto it = clientsWebSocket.begin(); it != clientsWebSocket.end(); it++)
     {
         QWebSocket *client = it.key();
         int userId = it.value();
 
-        if (user_ids_to_send.contains(userId) || user_ids_to_send.empty())
+        if (user_ids_to_send_.contains(userId))
         {
             client->sendTextMessage(QString::fromUtf8(data));
         }
     }
-
-    user_ids_to_send.clear();
 }
 
 void ChatServer::broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort) {

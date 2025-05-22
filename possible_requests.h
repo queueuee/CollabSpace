@@ -5,6 +5,8 @@
 #define MESSAGE "message"
 #define REGISTER_USER "register_user"
 #define LOGIN_USER "login_user"
+#define LOGOUT_USER "logout_user"
+#define UPDATE_USER "update_user"
 #define CREATE_SERVER "create_server"
 #define CREATE_FRIENDSHIP "create_friendship"
 #define JOIN_SERVER "join_server"

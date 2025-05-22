@@ -16,6 +16,13 @@
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 
+enum userStatus
+{
+    offline = 0,
+    online = 1
+};
+
+
 class ChatServer : public QObject {
     Q_OBJECT
 
@@ -38,12 +45,11 @@ private:
     QSqlDatabase *db__;
     QWebSocketServer *webSocketServer;
     QMap<QWebSocket *, int> clientsWebSocket;
-    QSet<int> user_ids_to_send;
     QUdpSocket *udpSocket;
     QHash<QString, QPair<QHostAddress, quint16>> clientsUDP;
 
     void parseJson(QJsonObject &messageJson_);
-    void broadcastMessage(const QJsonObject &message, QWebSocket *excludeSocket = nullptr);
+    void broadcastMessage(const QJsonObject &message, QSet<int> user_ids_to_send_);
     void broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort);
     QJsonObject generateResponse(bool is_positive, const QJsonObject &response_params);
     QJsonObject generateResponse(bool is_positive_, const QString requestType_, const QJsonObject &response_params_);
