@@ -35,10 +35,19 @@
 
 enum UserState
 {
-    Offline = 0,
-    Online  = 1
+    InGame = 0,
+    Online = 1,
+    Offline = 2
 };
 
+enum FriendShipState
+{
+    Waiting = 0,
+    Accepted = 1,
+    Blocked = 2
+};
+
+// Разделить класс на participant и friend, унаследовав от абстрактного User
 class Participant : public QWidget
 {
     Q_OBJECT
@@ -68,6 +77,7 @@ private:
 
 signals:
     void statusUpdate(QWidget*, UserState);
+    void sendFriendRequest(int id_);
 };
 
 class HorizontalTabStyle : public QProxyStyle
@@ -212,6 +222,7 @@ signals:
     void getMessagesList(int channel_id_);
     void deleteServerSignal(int id_);
     void leaveServerSignal(int id_);
+    void sendFriendRequest(int server_id_, int user_id_);
 
 private slots:
     void on_userStatusUpdate(QWidget*, UserState);

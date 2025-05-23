@@ -23,6 +23,8 @@ ClientMain::ClientMain(QWidget *parent)
     connect(networkManager__, &NetworkManager::deleteServerAnswer, this, &ClientMain::on_deleteServerAnswer);
     connect(networkManager__, &NetworkManager::serverParticipantsList, this, &ClientMain::on_serverParticipantsList);
     connect(networkManager__, &NetworkManager::updateUser, this, &ClientMain::on_updateUser);
+    connect(networkManager__, &NetworkManager::acceptedFriendship, this, &ClientMain::on_friendshipAccepted);
+    connect(networkManager__, &NetworkManager::addFriendRequest, this, &ClientMain::on_addFriendRequest);
 
     // Авторизация
     Authorization auth(networkManager__);
@@ -33,6 +35,8 @@ ClientMain::ClientMain(QWidget *parent)
         setWindowTitle(programmName + " - " + userData__.login);
         getUserServerList();
         getOpenServerList();
+        getFriendRequests();
+        getFriendsList();
     }
     else
     {
@@ -45,6 +49,20 @@ ClientMain::ClientMain(QWidget *parent)
 
     ui__->micOnOffButton->setFlat(micEnabled__);
     ui__->headersOnOffButton->setFlat(headphonesEnabled__);
+
+    ui__->tableWidget->verticalHeader()->setVisible(false);
+    ui__->tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    ui__->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    connect(ui__->tableWidget, &QTableWidget::cellDoubleClicked, this, [=](int row, int column){
+        QTableWidgetItem* item = ui__->tableWidget->item(row, column);
+        if (item)
+        {
+            QMessageBox::information(this, "Ячейка нажата",
+                                     QString("Вы дважды кликнули на ячейку [%1, %2]: %3")
+                                         .arg(row).arg(column).arg(item->text()));
+        }
+    });
+
 }
 
 ClientMain::~ClientMain()
@@ -135,6 +153,15 @@ void ClientMain::on_getUserServerList(const QJsonObject &info)
                                     };
             networkManager__->sendMessageJsonToServer(messageJson);
         });
+        connect(server, &Server::sendFriendRequest, this, [&](int server_id_, int user_id_){
+            QJsonObject messageJson{
+                                    {REQUEST, CREATE_FRIENDSHIP},
+                                    {"sender_id", userData__.user_id},
+                                    {"server_id", server_id_},
+                                    {"target_id", user_id_},
+                                    };
+            networkManager__->sendMessageJsonToServer(messageJson);
+        });
 
         userServers__[server_id.toInt()] = server;
 
@@ -187,6 +214,7 @@ void ClientMain::logOut()
     QJsonObject logoutRequest{
         {REQUEST, LOGOUT_USER},
         {"user_id", userData__.user_id},
+        {"user_login", userData__.login},
     };
 
     networkManager__->sendMessageJsonToServer(logoutRequest);
@@ -235,7 +263,6 @@ void ClientMain::on_joinServer(int id_)
 
     networkManager__->sendMessageJsonToServer(joinServerRequest);
 }
-
 
 void ClientMain::leaveVoiceChat()
 {
@@ -350,6 +377,26 @@ void ClientMain::getServerParticipantsList(int id_)
     networkManager__->sendMessageJsonToServer(fillServerRequest);
 }
 
+void ClientMain::getFriendRequests()
+{
+    QJsonObject getFriendRequests{
+        {REQUEST, GET_FRIEND_REQUESTS},
+        {"user_id", userData__.user_id},
+    };
+
+    networkManager__->sendMessageJsonToServer(getFriendRequests);
+}
+
+void ClientMain::getFriendsList()
+{
+    QJsonObject getFriendList{
+        {REQUEST, GET_FRIEND_LIST},
+        {"user_id", userData__.user_id},
+    };
+
+    networkManager__->sendMessageJsonToServer(getFriendList);
+}
+
 void ClientMain::on_serverParticipantsList(const QJsonObject &info)
 {
     const QJsonObject users_list = info["users_list"].toObject();
@@ -365,10 +412,181 @@ void ClientMain::on_serverParticipantsList(const QJsonObject &info)
 
 void ClientMain::on_updateUser(const QJsonObject &response)
 {
+    int userId = response["user_id"].toInt();
+    UserState newState = (UserState)response["status"].toInt();
+    QString userLogin = response["user_login"].toString();
+
+    // Обновляем состояние на серверах
     for (auto& server : userServers__)
     {
-        server->participantUpdateStatus(response["user_id"].toInt(), (UserState)response["status"].toInt());
+        server->participantUpdateStatus(userId, newState);
     }
+
+    // Поиск ячейки с именем пользователя в таблице
+    int rows = ui__->tableWidget->rowCount();
+    int cols = ui__->tableWidget->columnCount();
+    int currentRow = -1;
+    int currentColumn = -1;
+
+    for (int row = 0; row < rows; ++row)
+    {
+        for (int col = 0; col < cols; ++col)
+        {
+            QTableWidgetItem* item = ui__->tableWidget->item(row, col);
+            if (item && item->text() == userLogin)
+            {
+                currentRow = row;
+                currentColumn = col;
+                break;
+            }
+        }
+        if (currentRow != -1)
+            break;
+    }
+
+    if (currentRow == -1)
+        return;
+
+    // Перемещаем ячейку
+    QTableWidgetItem* movedItem = ui__->tableWidget->takeItem(currentRow, currentColumn);
+    ui__->tableWidget->setItem(currentRow, currentColumn, nullptr);
+
+    // Проверяем, осталась ли строка пустой
+    bool isRowEmpty = true;
+    for (int col = 0; col < cols; ++col)
+    {
+        QTableWidgetItem* item = ui__->tableWidget->item(currentRow, col);
+        if (item && !item->text().isEmpty())
+        {
+            isRowEmpty = false;
+            break;
+        }
+    }
+
+    if (isRowEmpty)
+    {
+        ui__->tableWidget->removeRow(currentRow);
+        --rows; // строк стало на одну меньше
+        if (currentRow < rows)
+        {
+            // перемещённая строка была выше — нужно сдвинуть все ниже
+            if (currentRow < rows) {
+                if (currentRow < rows)
+                    rows = ui__->tableWidget->rowCount(); // обновим количество строк
+            }
+        }
+    }
+
+    // Ищем, куда вставить ячейку
+    int targetColumn = static_cast<int>(newState);
+    int insertRow = rows;
+
+    for (int row = 0; row < rows; ++row)
+    {
+        QTableWidgetItem* item = ui__->tableWidget->item(row, targetColumn);
+        if (!item || item->text().isEmpty())
+        {
+            insertRow = row;
+            break;
+        }
+    }
+
+    if (insertRow == rows)
+    {
+        ui__->tableWidget->setRowCount(rows + 1);
+    }
+
+    ui__->tableWidget->setItem(insertRow, targetColumn, movedItem);
+}
+
+void ClientMain::on_friendshipAccepted(const int id, const QString &username, int userState)
+{
+    if (userFriends__.contains(id))
+        return;
+
+    Participant *user = new Participant(id,
+                                        username,
+                                        (UserState)userState);
+    userFriends__[id] = user;
+
+    int stateColumn = user->getState();
+    int rowCount = ui__->tableWidget->rowCount();
+    bool needToInsert = true;
+
+    // Проверка, все ли строки в нужном столбце заняты непустыми значениями
+    for (int row = 0; row < rowCount; ++row)
+    {
+        QTableWidgetItem* item = ui__->tableWidget->item(row, stateColumn);
+        if (!item || item->text().isEmpty())
+        {
+            needToInsert = false;
+            break;
+        }
+    }
+
+    // Если есть хотя бы одна пустая ячейка — вставляем туда, иначе вставляем новую строку
+    if (needToInsert)
+    {
+        ui__->tableWidget->setRowCount(rowCount + 1);
+
+        // Сдвигаем строки вниз в выбранном столбце
+        for (int row = rowCount; row > 0; --row)
+        {
+            QTableWidgetItem* aboveItem = ui__->tableWidget->item(row - 1, stateColumn);
+            if (aboveItem)
+            {
+                ui__->tableWidget->setItem(row, stateColumn, new QTableWidgetItem(*aboveItem));
+            }
+            else
+            {
+                ui__->tableWidget->setItem(row, stateColumn, new QTableWidgetItem(""));
+            }
+        }
+
+        QTableWidgetItem* newItem = new QTableWidgetItem(username);
+        ui__->tableWidget->setItem(0, stateColumn, newItem);
+    }
+    else
+    {
+        // Вставка в первую пустую ячейку
+        for (int row = 0; row < rowCount; ++row)
+        {
+            QTableWidgetItem* item = ui__->tableWidget->item(row, stateColumn);
+            if (!item || item->text().isEmpty())
+            {
+                ui__->tableWidget->setItem(row, stateColumn, new QTableWidgetItem(username));
+                break;
+            }
+        }
+    }
+}
+
+void ClientMain::on_addFriendRequest(const int id_, const QString &username_)
+{
+    QWidget *container = new QWidget(this);
+    QHBoxLayout *layout = new QHBoxLayout(container);
+
+    QLabel *label = new QLabel(username_, container);
+    QPushButton *acceptButton = new QPushButton("Принять", container);
+
+    connect(acceptButton, &QPushButton::clicked, this, [=]()
+    {
+        QJsonObject acceptFriendshipRequest{
+            {REQUEST, ACCEPT_FRIENDSHIP},
+            {"accepter_id", userData__.user_id},
+            {"sender_id", id_}
+        };
+
+        networkManager__->sendMessageJsonToServer(acceptFriendshipRequest);
+    });
+
+    layout->addWidget(label);
+    layout->addStretch();
+    layout->addWidget(acceptButton);
+
+    QVBoxLayout *scrollLayout = qobject_cast<QVBoxLayout *>(ui__->friendRequestsScrlAreaContents->layout());
+
+    scrollLayout->insertWidget(0, container);
 }
 
 void ClientMain::handleTextMessageReceived(int server_id,
@@ -379,3 +597,14 @@ void ClientMain::handleTextMessageReceived(int server_id,
 {
     userServers__[server_id]->getChannels()[channel_id]->setLastMessage(userName, content, timestamp);
 }
+
+
+void ClientMain::on_toFriendRequestsBtn_clicked()
+{
+    int currentIndex = ui__->stackedWidget->currentIndex();
+    int nextIndex = (currentIndex + 1) % 2;
+    ui__->toFriendRequestsBtn->setText(nextIndex == 0 ? ">" : "<");
+    ui__->label_4->setText(nextIndex == 0 ? "Друзья" : "Заявки в друзья");
+    ui__->stackedWidget->setCurrentIndex(nextIndex);
+}
+

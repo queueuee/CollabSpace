@@ -144,6 +144,42 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
     {
         emit updateUser(messageJson_["info"].toObject());
     }
+    else if(request_type == GET_FRIEND_REQUESTS)
+    {
+        QJsonObject friendRequestsObj = messageJson_["info"].toObject()["friend_requests"].toObject();
+
+        for (auto it = friendRequestsObj.begin(); it != friendRequestsObj.end(); ++it)
+        {
+            int key = it.key().toInt();
+            QString username = it.value().toObject()["user_login"].toString();
+
+            emit addFriendRequest(key, username);
+        }
+    }
+    else if(request_type == CREATE_FRIENDSHIP)
+    {
+        QJsonObject friendRequestsObj = messageJson_["info"].toObject();
+        emit addFriendRequest(friendRequestsObj["user_id"].toInt(), friendRequestsObj["user_login"].toString());
+    }
+    else if(request_type == ACCEPT_FRIENDSHIP)
+    {
+        QJsonObject acceptFriendshipObj = messageJson_["info"].toObject();
+        emit acceptedFriendship(acceptFriendshipObj["user_id"].toInt(),
+                                acceptFriendshipObj["user_login"].toString(),
+                                acceptFriendshipObj["user_status"].toInt());
+    }
+    else if(request_type == GET_FRIEND_LIST)
+    {
+        QJsonObject getFriendsObj = messageJson_["info"].toObject()["friend_list"].toObject();
+        for (auto it = getFriendsObj.begin(); it != getFriendsObj.end(); ++it)
+        {
+            int key = it.key().toInt();
+            QString username = it.value().toObject()["user_login"].toString();
+            int user_status = it.value().toObject()["user_status"].toInt();
+
+            emit acceptedFriendship(key, username, user_status);
+        }
+    }
 
 }
 

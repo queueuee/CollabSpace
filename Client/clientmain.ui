@@ -52,7 +52,7 @@
         <item>
          <widget class="QToolBox" name="mainToolBox">
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="page">
            <property name="geometry">
@@ -171,6 +171,22 @@
                  </widget>
                 </item>
                 <item>
+                 <widget class="QPushButton" name="toFriendRequestsBtn">
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>&gt;</string>
+                  </property>
+                  <property name="flat">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QPushButton" name="pushButton_3">
                   <property name="maximumSize">
                    <size>
@@ -186,28 +202,75 @@
                </layout>
               </item>
               <item>
-               <widget class="QTableWidget" name="tableWidget">
-                <property name="autoScroll">
-                 <bool>false</bool>
+               <widget class="QStackedWidget" name="stackedWidget">
+                <property name="currentIndex">
+                 <number>0</number>
                 </property>
-                <property name="sortingEnabled">
-                 <bool>false</bool>
-                </property>
-                <column>
-                 <property name="text">
-                  <string>В игре</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>В сети</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Не в сети</string>
-                 </property>
-                </column>
+                <widget class="QWidget" name="page_3">
+                 <layout class="QVBoxLayout" name="verticalLayout_15">
+                  <item>
+                   <widget class="QTableWidget" name="tableWidget">
+                    <property name="autoScroll">
+                     <bool>false</bool>
+                    </property>
+                    <property name="sortingEnabled">
+                     <bool>false</bool>
+                    </property>
+                    <column>
+                     <property name="text">
+                      <string>В игре</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="text">
+                      <string>В сети</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="text">
+                      <string>Не в сети</string>
+                     </property>
+                    </column>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="page_4">
+                 <layout class="QHBoxLayout" name="horizontalLayout_13">
+                  <item>
+                   <widget class="QScrollArea" name="friendRequestsScrlArea">
+                    <property name="widgetResizable">
+                     <bool>true</bool>
+                    </property>
+                    <widget class="QWidget" name="friendRequestsScrlAreaContents">
+                     <property name="geometry">
+                      <rect>
+                       <x>0</x>
+                       <y>0</y>
+                       <width>380</width>
+                       <height>276</height>
+                      </rect>
+                     </property>
+                     <layout class="QVBoxLayout" name="verticalLayout_16">
+                      <item>
+                       <spacer name="verticalSpacer_9">
+                        <property name="orientation">
+                         <enum>Qt::Vertical</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>20</width>
+                          <height>255</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
                </widget>
               </item>
              </layout>

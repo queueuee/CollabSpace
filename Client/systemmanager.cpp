@@ -22,6 +22,9 @@ Participant::Participant(int id_, QString login_, UserState status_) :
 
     addFriendBtn__ = new QPushButton("+");
     addFriendBtn__->setMaximumWidth(20);
+    connect(addFriendBtn__, &QPushButton::clicked, this, [=](){
+        emit sendFriendRequest(id__);
+    });
 
     sendMsgBtn__ = new QPushButton("->");
     sendMsgBtn__->setMaximumWidth(20);
@@ -331,6 +334,10 @@ void Server::participantAdd(Participant *user_)
     participants__[user_->getId()] = user_;
 
     connect(user_, &Participant::statusUpdate, this, &Server::on_userStatusUpdate);
+    connect(user_, &Participant::sendFriendRequest, this, [=]()
+    {
+        emit sendFriendRequest(id__, user_->getId());
+    });
 
     switch(user_->getState()){
     case UserState::Online:

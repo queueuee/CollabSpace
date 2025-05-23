@@ -43,7 +43,8 @@ private slots:
     void on_deleteServerAnswer(const QJsonObject &response);
     void on_serverParticipantsList(const QJsonObject &response);
     void on_updateUser(const QJsonObject &response);
-
+    void on_friendshipAccepted(const int id, const QString &username, int userState);
+    void on_addFriendRequest(const int id, const QString &username);
     void on_joinServer(int id);
 
     void startVoiceChat();            // Старт голосового чата
@@ -58,6 +59,8 @@ private slots:
 
     void on_createServerButton_clicked();
 
+    void on_toFriendRequestsBtn_clicked();
+
 private:
     void createServer(const QString &name_,
                       const QString &description_,
@@ -67,6 +70,8 @@ private:
     void getUserServerList();
     void getOpenServerList();
     void getServerParticipantsList(int id_);
+    void getFriendRequests();
+    void getFriendsList();
     void clearOpenServers();
     void logOut();
 
@@ -77,6 +82,7 @@ private:
     NetworkManager                                  *networkManager__;
 
     QMap<int, Server*>                              userServers__;
+    QMap<int, Participant*>                         userFriends__;
     QMap<int, ShortServer*>                         openServers__;
 
 

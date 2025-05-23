@@ -53,6 +53,8 @@ signals:
     void leaveServerAnswer(const QJsonObject &answer);
     void serverParticipantsList(const QJsonObject &answer);
     void updateUser(const QJsonObject &answer);
+    void acceptedFriendship(const int id, const QString &username, int userState);
+    void addFriendRequest(const int id, const QString &username);
 
 private slots:
     void sendAudio();

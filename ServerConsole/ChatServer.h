@@ -16,10 +16,18 @@
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 
-enum userStatus
+enum UserState
 {
-    offline = 0,
-    online = 1
+    InGame = 0,
+    Online = 1,
+    Offline = 2
+};
+
+enum FriendShipState
+{
+    Waiting = 0,
+    Accepted = 1,
+    Blocked = 2
 };
 
 

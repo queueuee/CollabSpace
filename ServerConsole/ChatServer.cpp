@@ -181,7 +181,7 @@ void ChatServer::handleWebSocketMessage(const QString &message)
 
             query.clear();
             query.prepare("UPDATE users SET status = :status WHERE id = :user_id;");
-            query.bindValue(":status", userStatus::online);
+            query.bindValue(":status", UserState::Online);
             query.bindValue(":user_id", user_id);
             query.exec();
         }
@@ -218,12 +218,12 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         while(query.next())
         {
             user_ids_to_send.insert(query.value("related_user_id").toInt());
-            qDebug() << query.value("server_id") << query.value("compadres_id") << query.value("related_user_id");
         }
 
         QJsonObject response{
             {"user_id", user_id},
-            {"status", userStatus::online}
+            {"user_login", login},
+            {"status", UserState::Online}
         };
         messageJsonToSend = generateResponse(true, UPDATE_USER, response);
 
@@ -234,10 +234,11 @@ void ChatServer::handleWebSocketMessage(const QString &message)
     else if(request_type == LOGOUT_USER)
     {
         int user_id = messageJson.value("user_id").toInt();
+        QString login = messageJson.value("user_login").toString();
 
         QSqlQuery query;
         query.prepare("UPDATE users SET status = :status WHERE id = :user_id;");
-        query.bindValue(":status", userStatus::offline);
+        query.bindValue(":status", UserState::Offline);
         query.bindValue(":user_id", user_id);
         query.exec();
 
@@ -266,12 +267,12 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         while(query.next())
         {
             user_ids_to_send.insert(query.value("related_user_id").toInt());
-            qDebug() << query.value("server_id") << query.value("compadres_id") << query.value("related_user_id");
         }
 
         QJsonObject response{
             {"user_id", user_id},
-            {"status", userStatus::offline}
+            {"user_login", login},
+            {"status", UserState::Offline}
         };
         messageJsonToSend = generateResponse(true, UPDATE_USER, response);
 
@@ -617,6 +618,170 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         };
 
         messageJsonToSend = generateResponse(true, GET_SERVER_PARTICIPANTS_LIST, response);
+    }
+    else if(request_type == GET_FRIEND_REQUESTS)
+    {
+        int user_id = messageJson.value("user_id").toInt();
+
+        user_ids_to_send.insert(user_id);
+
+        QSqlQuery query;
+        query.clear();
+        query.prepare(R"(
+            SELECT user1_id AS user_id, users.login AS user_login FROM compadres
+            JOIN users ON users.id = compadres.user1_id
+            WHERE user2_id = :user_id AND compadres.status = :status
+        )");
+        query.bindValue(":user_id", user_id);
+        query.bindValue(":status", FriendShipState::Waiting);
+        query.exec();
+
+        QJsonObject response_params;
+        while(query.next())
+        {
+            QJsonObject user_info{
+                {"user_login", query.value("user_login").toString()}
+            };
+            response_params.insert(query.value("user_id").toString(), user_info);
+        }
+        QJsonObject response{
+            {"friend_requests", response_params}
+        };
+
+        messageJsonToSend = generateResponse(true, GET_FRIEND_REQUESTS, response);
+    }
+    else if(request_type == GET_FRIEND_LIST)
+    {
+        int user_id = messageJson.value("user_id").toInt();
+
+        user_ids_to_send.insert(user_id);
+
+        QSqlQuery query;
+        query.clear();
+        query.prepare(R"(
+            SELECT u.id AS user_id, u.login AS user_login, u.status AS user_status
+            FROM users u
+            JOIN compadres c
+                ON (
+                    (c.user1_id = :user_id AND c.user2_id = u.id) OR
+                    (c.user2_id = :user_id AND c.user1_id = u.id)
+                )
+            WHERE c.status = :status;
+        )");
+        query.bindValue(":user_id", user_id);
+        query.bindValue(":status", FriendShipState::Accepted);
+        query.exec();
+
+        QJsonObject response_params;
+        while(query.next())
+        {
+            QJsonObject user_info{
+                {"user_login", query.value("user_login").toString()},
+                {"user_status", query.value("user_status").toInt()}
+            };
+            response_params.insert(query.value("user_id").toString(), user_info);
+        }
+        QJsonObject response{
+            {"friend_list", response_params}
+        };
+
+        messageJsonToSend = generateResponse(true, GET_FRIEND_LIST, response);
+    }
+    else if(request_type == CREATE_FRIENDSHIP)
+    {
+        int sender_id = messageJson.value("sender_id").toInt();
+        int server_id = messageJson.value("server_id").toInt();
+        int target_id = messageJson.value("target_id").toInt();
+
+        user_ids_to_send.insert(target_id);
+
+        QSqlQuery query;
+        query.clear();
+        query.prepare(R"(
+            INSERT INTO compadres (user1_id, user2_id, status)
+            VALUES (:sender_id, :target_id, :status);
+        )");
+        query.bindValue(":sender_id", sender_id);
+        query.bindValue(":target_id", target_id);
+        query.bindValue(":status", FriendShipState::Waiting);
+        query.exec();
+
+        query.clear();
+        query.prepare(R"(
+            SELECT login FROM users
+            WHERE id = :sender_id;
+                         )");
+        query.bindValue(":sender_id", sender_id);
+        query.exec();
+        query.next();
+
+        QJsonObject response_params
+            {
+                {"user_id", sender_id},
+                {"user_login", query.value("login").toString()}
+            };
+
+        messageJsonToSend = generateResponse(true, CREATE_FRIENDSHIP, response_params);
+    }
+    else if(request_type == ACCEPT_FRIENDSHIP)
+    {
+        int user2_id = messageJson.value("accepter_id").toInt();
+        int user1_id = messageJson.value("sender_id").toInt();
+
+        QSqlQuery query;
+        query.clear();
+        query.prepare(R"(
+            UPDATE compadres
+            SET status = :status
+            WHERE user1_id = :user1_id AND user2_id = :user2_id;
+        )");
+        query.bindValue(":user1_id", user1_id);
+        query.bindValue(":user2_id", user2_id);
+        query.bindValue(":status", FriendShipState::Accepted);
+        query.exec();
+
+        query.clear();
+        query.prepare(R"(
+            SELECT id, login, status FROM users
+            WHERE id = :user1_id OR id = :user2_id;
+                         )");
+        query.bindValue(":user1_id", user1_id);
+        query.bindValue(":user2_id", user2_id);
+        query.exec();
+        query.next();
+
+        // Ответ создателю запроса
+        {
+            user_ids_to_send.insert(user1_id);
+            QJsonObject response_params
+                {
+                    {"user_id", user2_id},
+                    {"user_login", query.value("login").toString()},
+                    {"friendship_status", FriendShipState::Accepted},
+                    {"user_status", query.value("status").toInt()}
+                };
+
+            messageJsonToSend = generateResponse(true, ACCEPT_FRIENDSHIP, response_params);
+            broadcastMessage(messageJsonToSend, user_ids_to_send);
+        }
+        query.next();
+
+        // Ответ принимающему запрос
+        {
+            user_ids_to_send.clear();
+            user_ids_to_send.insert(user2_id);
+            QJsonObject response_params
+                {
+                    {"user_id", user1_id},
+                    {"user_login", query.value("login").toString()},
+                    {"friendship_status", FriendShipState::Accepted},
+                    {"user_status", query.value("status").toInt()}
+                };
+
+            messageJsonToSend = generateResponse(true, ACCEPT_FRIENDSHIP, response_params);
+            broadcastMessage(messageJsonToSend, user_ids_to_send);
+        }
+        return;
     }
 
     broadcastMessage(messageJsonToSend, user_ids_to_send);

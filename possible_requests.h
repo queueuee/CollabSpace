@@ -9,6 +9,7 @@
 #define UPDATE_USER "update_user"
 #define CREATE_SERVER "create_server"
 #define CREATE_FRIENDSHIP "create_friendship"
+#define ACCEPT_FRIENDSHIP "accept_friendship"
 #define JOIN_SERVER "join_server"
 #define DELETE_SERVER "delete_server"
 #define LEAVE_SERVER "leave_server"
@@ -24,7 +25,8 @@
 #define GET_USER_SERVERS_LIST "get_user_servers_list"
 #define GET_OPEN_SERVERS_LIST "get_open_servers_list"
 #define GET_SERVER_PARTICIPANTS_LIST "get_server_participants_list"
-
+#define GET_FRIEND_REQUESTS "get_friend_requests"
+#define GET_FRIEND_LIST "get_friend_list"
 
 #define TYPE "type"
 // Answer types
