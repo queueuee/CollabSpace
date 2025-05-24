@@ -474,7 +474,8 @@ void ClientMain::on_addPersonalChat(const int channel_id, const QString &usernam
 
     QPushButton *toChatBtn = new QPushButton(username, container);
     connect(toChatBtn, &QPushButton::clicked, this, [=](){
-        on_getMessagesList(channel_id);
+        if (!personalMessages__[channel_id]->getMessagesCount())
+            on_getMessagesList(channel_id);
 
         int currentIndex = ui__->personalMessagesStackedWidget->currentIndex();
         int nextIndex = (currentIndex + 1) % 2;
@@ -482,11 +483,7 @@ void ClientMain::on_addPersonalChat(const int channel_id, const QString &usernam
         ui__->label_2->setText(username);
         ui__->personalMessagesStackedWidget->setCurrentIndex(nextIndex);
 
-        QVBoxLayout *page6Layout = qobject_cast<QVBoxLayout *>(ui__->page_6->layout());
-        if (!page6Layout)
-            page6Layout = new QVBoxLayout();
-        page6Layout->addWidget(personalMessages__[channel_id]->getWidget());
-
+        personalMessages__[channel_id]->getWidget()->setVisible(true);
     });
 
     layout->addWidget(toChatBtn);
@@ -494,6 +491,13 @@ void ClientMain::on_addPersonalChat(const int channel_id, const QString &usernam
     QVBoxLayout *scrollLayout = qobject_cast<QVBoxLayout *>(ui__->personalMessagesListScrollAreaWidgetContents->layout());
 
     scrollLayout->insertWidget(0, container);
+
+    QVBoxLayout *page6Layout = qobject_cast<QVBoxLayout *>(ui__->page_6->layout());
+    if (!page6Layout)
+        page6Layout = new QVBoxLayout();
+
+    page6Layout->addWidget(personalMessages__[channel_id]->getWidget());
+    personalMessages__[channel_id]->getWidget()->setVisible(false);
 }
 
 void ClientMain::on_sendWhisper(const int target_id, const QString &message_)
@@ -547,7 +551,7 @@ void ClientMain::on_sendFriendRequest(const int user_id_)
 void ClientMain::handleTextMessageReceived(int server_id,
                                               int channel_id,
                                               const QString &userName,
-                                              const QString &content,
+                                              QString &content,
                                               const QString& timestamp)
 {
     if (server_id > 0)
@@ -577,5 +581,9 @@ void ClientMain::on_backToPersonalMsgsListBtn_clicked()
     ui__->backToPersonalMsgsListBtn->setVisible(false);
     ui__->label_2->setText("Сообщения");
     ui__->personalMessagesStackedWidget->setCurrentIndex(nextIndex);
+
+    for (auto &key : personalMessages__) {
+        key->getWidget()->setVisible(false);
+    }
 }
 

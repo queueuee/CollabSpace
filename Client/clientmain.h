@@ -33,7 +33,7 @@ private slots:
     void handleTextMessageReceived(int server_id,
                                    int channel_id,
                                    const QString &userName,
-                                   const QString &content,
+                                   QString &content,
                                    const QString &timestamp);
 
     void on_getUserServerList(const QJsonObject &response);

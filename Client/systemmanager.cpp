@@ -296,7 +296,8 @@ Server::Server(int id_,
 
         if(!isVoice)
             connect(channelButton, &QPushButton::clicked, this ,[=](){
-                emit getMessagesList(channel_id);
+                if (channels__[channel_id]->getMessagesCount() == 0)
+                    emit getMessagesList(channel_id);
             });
     }
 
@@ -419,8 +420,17 @@ Channel::Channel(int id_,
     }
 }
 
+int Channel::getMessagesCount()
+{
+    if (messagesLayout__)
+        // 1 - спейсер
+        return messagesLayout__->count() - 1;
+    else
+        return -1;
+}
+
 void Channel::setLastMessage(const QString &sender_name_,
-                             const QString &content_,
+                             QString &content_,
                              const QString &created_at_)
 {
     QDateTime dateTime = QDateTime::fromString(created_at_, Qt::ISODate);
@@ -430,7 +440,10 @@ void Channel::setLastMessage(const QString &sender_name_,
     else
         formattedDate = dateTime.toString("hh:mm");
 
-    chatWindow->append(sender_name_ + " " + formattedDate + '\n' + content_);
+    //chatWindow->append(sender_name_ + " " + formattedDate + '\n' + content_);
+    QString type = TEXT;
+    QWidget *messageHandler = (new Message(-1, type, sender_name_, content_, formattedDate))->getWidget();
+    messagesLayout__->addWidget(messageHandler);
 }
 
 void Channel::createVoiceChannel()
@@ -459,8 +472,19 @@ void Channel::createTextChannel()
     auto *textChannelTab = new QWidget();
     auto *textChannelLayout = new QVBoxLayout(textChannelTab);
 
-    chatWindow = new QTextEdit();
-    chatWindow->setReadOnly(true);
+    messagesScrollArea__ = new QScrollArea();
+    messagesScrollArea__->setWidgetResizable(true);
+
+    QWidget *messagesContainer = new QWidget();
+    messagesLayout__ = new QVBoxLayout(messagesContainer);
+    QSpacerItem *topSpacer = new QSpacerItem(
+        0, 0,
+        QSizePolicy::Minimum,
+        QSizePolicy::Expanding
+        );
+    messagesLayout__->addItem(topSpacer);
+    messagesContainer->setLayout(messagesLayout__);
+    messagesScrollArea__->setWidget(messagesContainer);
 
     auto *inputLayout = new QHBoxLayout();
     auto *addButton = new QToolButton();
@@ -474,14 +498,12 @@ void Channel::createTextChannel()
     inputLayout->addWidget(emojiButton);
     inputLayout->addWidget(sendButton);
 
-    textChannelLayout->addWidget(chatWindow);
+    textChannelLayout->addWidget(messagesScrollArea__);
     textChannelLayout->addLayout(inputLayout);
-
 
     mainWidget__->setLayout(textChannelLayout);
 
     connect(sendButton, &QPushButton::clicked, this, [=](){
-        QApplication::beep();
         emit sendMessageFromChannel(id__, 0, messageInput->text());
         messageInput->clear();
     });
@@ -628,4 +650,25 @@ void FriendsTable::on_friendStatusUpdate(int user_id_, UserState status_, const 
 
     this->setItem(insertRow, targetColumn, movedItem);
 
+}
+
+Message::Message(int id_, const QString &type_, const QString &authorName_, QString &content_, const QString &dateTime_, QWidget *parent) : QWidget(parent)
+{
+    mainWidget__ = new QWidget();
+    QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget__);
+    QWidget *senderAndTimeWidget = new QWidget();
+    QHBoxLayout *senderAndTimeLayout = new QHBoxLayout(senderAndTimeWidget);
+    QLabel *sender = new QLabel(authorName_);
+    QLabel *content = new QLabel(content_);
+    QLabel *dateTime = new QLabel(dateTime_);
+    sender->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    dateTime->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    content->setTextInteractionFlags(Qt::TextBrowserInteraction);
+
+    senderAndTimeLayout->addWidget(sender);
+    senderAndTimeLayout->addWidget(dateTime);
+    senderAndTimeLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum));
+
+    mainLayout->addWidget(senderAndTimeWidget);
+    mainLayout->addWidget(content);
 }

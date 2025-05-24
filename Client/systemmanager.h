@@ -16,6 +16,7 @@
 #include <QLineEdit>
 #include <QSpacerItem>
 #include <QGroupBox>
+#include <QScrollArea>
 #include <QPushButton>
 #include <QToolButton>
 #include <QTextEdit>
@@ -29,6 +30,8 @@
 #include <QMenu>
 #include <QContextMenuEvent>
 #include <QInputDialog>
+#include <QScrollBar>
+#include <QTimer>
 
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
@@ -136,6 +139,21 @@ private:
     QMap<int, Server*> serverIds_;
 };
 
+class Message : public QWidget
+{
+    Q_OBJECT
+public:
+    Message(int id_,
+            const QString &type_,
+            const QString &authorName_,
+            QString &content_,
+            const QString &dateTime_,
+            QWidget *parent = nullptr);
+    QWidget* getWidget() { return mainWidget__; };
+private:
+    QWidget *mainWidget__;
+
+};
 
 // создать виртуальный класс и унаследовать разные классы под ЛС и чаты севрера
 class Channel : public QObject
@@ -150,8 +168,9 @@ public:
                      QObject *parent = nullptr);
     QWidget *getWidget(){return mainWidget__;};
     int getID() {return id__;};
+    int getMessagesCount();
     void setLastMessage(const QString &sender_name_,
-                        const QString &content_,
+                        QString &content_,
                         const QString &created_at);
     ~Channel() {};
 
@@ -163,7 +182,9 @@ private:
     bool                                        is_voice__;
     QWidget                                     *mainWidget__;
 
-    QTextEdit                                   *chatWindow;
+    //QTextEdit                                   *chatWindow;
+    QScrollArea                                 *messagesScrollArea__;
+    QVBoxLayout                                 *messagesLayout__;
     void createVoiceChannel();
     void createTextChannel();
 
