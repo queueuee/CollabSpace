@@ -25,6 +25,7 @@ ClientMain::ClientMain(QWidget *parent)
     connect(networkManager__, &NetworkManager::updateUser, this, &ClientMain::on_updateUser);
     connect(networkManager__, &NetworkManager::acceptedFriendship, this, &ClientMain::on_friendshipAccepted);
     connect(networkManager__, &NetworkManager::addFriendRequest, this, &ClientMain::on_addFriendRequest);
+    connect(networkManager__, &NetworkManager::personalChat, this, &ClientMain::on_addPersonalChat);
 
     // Авторизация
     Authorization auth(networkManager__);
@@ -37,6 +38,7 @@ ClientMain::ClientMain(QWidget *parent)
         getOpenServerList();
         getFriendRequests();
         getFriendsList();
+        getPersonalChatsList();
     }
     else
     {
@@ -44,6 +46,8 @@ ClientMain::ClientMain(QWidget *parent)
     }
 
     messages_to_download__ = 20;
+    ui__->backToPersonalMsgsListBtn->setVisible(false);
+
     ui__->tabWidget->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
     ui__->mainToolBox->count();
 
@@ -112,29 +116,9 @@ void ClientMain::on_getUserServerList(const QJsonObject &info)
             channelsMap
             );
 
-        connect(server, &Server::sendMessageFromChannel, this, [&](int channel_id_, int mess_type_, const QString &message_){
-            if (!message_.isEmpty())
-            {
-                QJsonObject messageJson{
-                                        {REQUEST, MESSAGE},
-                                        {TYPE, TEXT},
-                                        {"channel_id", channel_id_},
-                                        {"user_id", userData__.user_id},
-                                        {"content", message_},
-                                        };
-                networkManager__->sendMessageJsonToServer(messageJson);
-            }
-        });
+        connect(server, &Server::sendMessageFromChannel, this, &ClientMain::on_sendMessageFromChannel);
 
-        connect(server, &Server::getMessagesList, this, [&](int channel_id_){
-            QJsonObject messageJson{
-                                    {REQUEST, GET_MESSAGES_LIST},
-                                    {"channel_id", channel_id_},
-                                    {"user_id", userData__.user_id},
-                                    {"num_of_msgs", messages_to_download__},
-                                    };
-            networkManager__->sendMessageJsonToServer(messageJson);
-        });
+        connect(server, &Server::getMessagesList, this, &ClientMain::on_getMessagesList);
 
         connect(server, &Server::deleteServerSignal, this, [&](int id_){
             QJsonObject messageJson{
@@ -150,15 +134,6 @@ void ClientMain::on_getUserServerList(const QJsonObject &info)
                                     {REQUEST, LEAVE_SERVER},
                                     {"user_id", userData__.user_id},
                                     {"server_id", id_},
-                                    };
-            networkManager__->sendMessageJsonToServer(messageJson);
-        });
-        connect(server, &Server::sendFriendRequest, this, [&](int server_id_, int user_id_){
-            QJsonObject messageJson{
-                                    {REQUEST, CREATE_FRIENDSHIP},
-                                    {"sender_id", userData__.user_id},
-                                    {"server_id", server_id_},
-                                    {"target_id", user_id_},
                                     };
             networkManager__->sendMessageJsonToServer(messageJson);
         });
@@ -397,16 +372,33 @@ void ClientMain::getFriendsList()
     networkManager__->sendMessageJsonToServer(getFriendList);
 }
 
+void ClientMain::getPersonalChatsList()
+{
+    QJsonObject getPersonalMessagesList{
+        {REQUEST, GET_PERSONAL_CHATS_LIST},
+        {"user_id", userData__.user_id},
+    };
+
+    networkManager__->sendMessageJsonToServer(getPersonalMessagesList);
+}
+
 void ClientMain::on_serverParticipantsList(const QJsonObject &info)
 {
     const QJsonObject users_list = info["users_list"].toObject();
     for (const QString &participant_id : users_list.keys())
     {
         QJsonObject participantInfo = users_list[participant_id].toObject();
-        Participant *user = new Participant(participant_id.toInt(),
-                                            participantInfo["user_login"].toString(),
-                                            (UserState)participantInfo["user_status"].toInt());
-        userServers__[info["server_id"].toInt()]->participantAdd(user);
+        if (!relatedUsers__.contains(participant_id.toInt()))
+        {
+            UserProfile *user = new UserProfile(participant_id.toInt(),
+                                                participantInfo["user_login"].toString(),
+                                                (UserState)participantInfo["user_status"].toInt(),
+                                                (FriendShipState)participantInfo["friend_status"].toInt());
+            relatedUsers__[participant_id.toInt()] = user;
+        }
+        connect(relatedUsers__[participant_id.toInt()], &UserProfile::sendFriendRequest, this, &ClientMain::on_sendFriendRequest);
+
+        userServers__[info["server_id"].toInt()]->participantAdd(relatedUsers__[participant_id.toInt()]);
     }
 }
 
@@ -416,149 +408,28 @@ void ClientMain::on_updateUser(const QJsonObject &response)
     UserState newState = (UserState)response["status"].toInt();
     QString userLogin = response["user_login"].toString();
 
-    // Обновляем состояние на серверах
-    for (auto& server : userServers__)
-    {
-        server->participantUpdateStatus(userId, newState);
-    }
-
-    // Поиск ячейки с именем пользователя в таблице
-    int rows = ui__->tableWidget->rowCount();
-    int cols = ui__->tableWidget->columnCount();
-    int currentRow = -1;
-    int currentColumn = -1;
-
-    for (int row = 0; row < rows; ++row)
-    {
-        for (int col = 0; col < cols; ++col)
-        {
-            QTableWidgetItem* item = ui__->tableWidget->item(row, col);
-            if (item && item->text() == userLogin)
-            {
-                currentRow = row;
-                currentColumn = col;
-                break;
-            }
-        }
-        if (currentRow != -1)
-            break;
-    }
-
-    if (currentRow == -1)
+    if (!relatedUsers__.contains(userId))
         return;
-
-    // Перемещаем ячейку
-    QTableWidgetItem* movedItem = ui__->tableWidget->takeItem(currentRow, currentColumn);
-    ui__->tableWidget->setItem(currentRow, currentColumn, nullptr);
-
-    // Проверяем, осталась ли строка пустой
-    bool isRowEmpty = true;
-    for (int col = 0; col < cols; ++col)
-    {
-        QTableWidgetItem* item = ui__->tableWidget->item(currentRow, col);
-        if (item && !item->text().isEmpty())
-        {
-            isRowEmpty = false;
-            break;
-        }
-    }
-
-    if (isRowEmpty)
-    {
-        ui__->tableWidget->removeRow(currentRow);
-        --rows; // строк стало на одну меньше
-        if (currentRow < rows)
-        {
-            // перемещённая строка была выше — нужно сдвинуть все ниже
-            if (currentRow < rows) {
-                if (currentRow < rows)
-                    rows = ui__->tableWidget->rowCount(); // обновим количество строк
-            }
-        }
-    }
-
-    // Ищем, куда вставить ячейку
-    int targetColumn = static_cast<int>(newState);
-    int insertRow = rows;
-
-    for (int row = 0; row < rows; ++row)
-    {
-        QTableWidgetItem* item = ui__->tableWidget->item(row, targetColumn);
-        if (!item || item->text().isEmpty())
-        {
-            insertRow = row;
-            break;
-        }
-    }
-
-    if (insertRow == rows)
-    {
-        ui__->tableWidget->setRowCount(rows + 1);
-    }
-
-    ui__->tableWidget->setItem(insertRow, targetColumn, movedItem);
+    relatedUsers__[userId]->setState(newState);
 }
 
 void ClientMain::on_friendshipAccepted(const int id, const QString &username, int userState)
 {
-    if (userFriends__.contains(id))
-        return;
-
-    Participant *user = new Participant(id,
-                                        username,
-                                        (UserState)userState);
-    userFriends__[id] = user;
-
-    int stateColumn = user->getState();
-    int rowCount = ui__->tableWidget->rowCount();
-    bool needToInsert = true;
-
-    // Проверка, все ли строки в нужном столбце заняты непустыми значениями
-    for (int row = 0; row < rowCount; ++row)
+    if (!relatedUsers__.contains(id))
     {
-        QTableWidgetItem* item = ui__->tableWidget->item(row, stateColumn);
-        if (!item || item->text().isEmpty())
-        {
-            needToInsert = false;
-            break;
-        }
+        UserProfile *user = new UserProfile(id,
+                                            username,
+                                            (UserState)userState,
+                                            FriendShipState::Accepted);
+        connect(user, &UserProfile::sendWhisper, this, &ClientMain::on_sendWhisper);
+        relatedUsers__[id] = user;
     }
 
-    // Если есть хотя бы одна пустая ячейка — вставляем туда, иначе вставляем новую строку
-    if (needToInsert)
-    {
-        ui__->tableWidget->setRowCount(rowCount + 1);
+    connect(relatedUsers__[id], &UserProfile::statusUpdate, ui__->tableWidget, [=](int id_, UserState state_){
+        ui__->tableWidget->on_friendStatusUpdate(id_, state_, username);
+    });
 
-        // Сдвигаем строки вниз в выбранном столбце
-        for (int row = rowCount; row > 0; --row)
-        {
-            QTableWidgetItem* aboveItem = ui__->tableWidget->item(row - 1, stateColumn);
-            if (aboveItem)
-            {
-                ui__->tableWidget->setItem(row, stateColumn, new QTableWidgetItem(*aboveItem));
-            }
-            else
-            {
-                ui__->tableWidget->setItem(row, stateColumn, new QTableWidgetItem(""));
-            }
-        }
-
-        QTableWidgetItem* newItem = new QTableWidgetItem(username);
-        ui__->tableWidget->setItem(0, stateColumn, newItem);
-    }
-    else
-    {
-        // Вставка в первую пустую ячейку
-        for (int row = 0; row < rowCount; ++row)
-        {
-            QTableWidgetItem* item = ui__->tableWidget->item(row, stateColumn);
-            if (!item || item->text().isEmpty())
-            {
-                ui__->tableWidget->setItem(row, stateColumn, new QTableWidgetItem(username));
-                break;
-            }
-        }
-    }
+    ui__->tableWidget->addFriend(relatedUsers__[id]);
 }
 
 void ClientMain::on_addFriendRequest(const int id_, const QString &username_)
@@ -589,13 +460,103 @@ void ClientMain::on_addFriendRequest(const int id_, const QString &username_)
     scrollLayout->insertWidget(0, container);
 }
 
+void ClientMain::on_addPersonalChat(const int channel_id, const QString &username, const int user_id, const int compadres_id)
+{
+    if (personalMessages__.contains(channel_id))
+        return;
+
+    personalMessages__[channel_id] = new Channel(channel_id, compadres_id, "someName", false, QDateTime::currentDateTimeUtc());
+
+    connect(personalMessages__[channel_id], &Channel::sendMessageFromChannel, this, &ClientMain::on_sendMessageFromChannel);
+
+    QWidget *container = new QWidget(this);
+    QHBoxLayout *layout = new QHBoxLayout(container);
+
+    QPushButton *toChatBtn = new QPushButton(username, container);
+    connect(toChatBtn, &QPushButton::clicked, this, [=](){
+        on_getMessagesList(channel_id);
+
+        int currentIndex = ui__->personalMessagesStackedWidget->currentIndex();
+        int nextIndex = (currentIndex + 1) % 2;
+        ui__->backToPersonalMsgsListBtn->setVisible(true);
+        ui__->label_2->setText(username);
+        ui__->personalMessagesStackedWidget->setCurrentIndex(nextIndex);
+
+        QVBoxLayout *page6Layout = qobject_cast<QVBoxLayout *>(ui__->page_6->layout());
+        if (!page6Layout)
+            page6Layout = new QVBoxLayout();
+        page6Layout->addWidget(personalMessages__[channel_id]->getWidget());
+
+    });
+
+    layout->addWidget(toChatBtn);
+
+    QVBoxLayout *scrollLayout = qobject_cast<QVBoxLayout *>(ui__->personalMessagesListScrollAreaWidgetContents->layout());
+
+    scrollLayout->insertWidget(0, container);
+}
+
+void ClientMain::on_sendWhisper(const int target_id, const QString &message_)
+{
+    QJsonObject whisperJson{
+        {REQUEST, SEND_WHISPER},
+        {"author_id", userData__.user_id},
+        {"target_id", target_id},
+        {"message", message_},
+    };
+    networkManager__->sendMessageJsonToServer(whisperJson);
+}
+
+void ClientMain::on_sendMessageFromChannel(const int channel_id_, const int mess_type_, const QString &message_)
+{
+    qDebug() << channel_id_;
+    if (!message_.isEmpty())
+    {
+        QJsonObject messageJson{
+                                {REQUEST, MESSAGE},
+                                {TYPE, TEXT},
+                                {"channel_id", channel_id_},
+                                {"user_id", userData__.user_id},
+                                {"content", message_},
+                                };
+        networkManager__->sendMessageJsonToServer(messageJson);
+    }
+}
+
+void ClientMain::on_getMessagesList(const int channel_id_)
+{
+    QJsonObject messageJson{
+                            {REQUEST, GET_MESSAGES_LIST},
+                            {"channel_id", channel_id_},
+                            {"user_id", userData__.user_id},
+                            {"num_of_msgs", messages_to_download__},
+                            };
+    networkManager__->sendMessageJsonToServer(messageJson);
+}
+
+void ClientMain::on_sendFriendRequest(const int user_id_)
+{
+    QJsonObject messageJson{
+        {REQUEST, CREATE_FRIENDSHIP},
+        {"sender_id", userData__.user_id},
+        {"target_id", user_id_},
+    };
+    networkManager__->sendMessageJsonToServer(messageJson);
+}
+
 void ClientMain::handleTextMessageReceived(int server_id,
                                               int channel_id,
                                               const QString &userName,
                                               const QString &content,
                                               const QString& timestamp)
 {
-    userServers__[server_id]->getChannels()[channel_id]->setLastMessage(userName, content, timestamp);
+    if (server_id > 0)
+    {
+        userServers__[server_id]->getChannels()[channel_id]->setLastMessage(userName, content, timestamp);
+        return;
+    }
+
+    personalMessages__[channel_id]->setLastMessage(userName, content, timestamp);
 }
 
 
@@ -606,5 +567,15 @@ void ClientMain::on_toFriendRequestsBtn_clicked()
     ui__->toFriendRequestsBtn->setText(nextIndex == 0 ? ">" : "<");
     ui__->label_4->setText(nextIndex == 0 ? "Друзья" : "Заявки в друзья");
     ui__->stackedWidget->setCurrentIndex(nextIndex);
+}
+
+
+void ClientMain::on_backToPersonalMsgsListBtn_clicked()
+{
+    int currentIndex = ui__->personalMessagesStackedWidget->currentIndex();
+    int nextIndex = (currentIndex + 1) % 2;
+    ui__->backToPersonalMsgsListBtn->setVisible(false);
+    ui__->label_2->setText("Сообщения");
+    ui__->personalMessagesStackedWidget->setCurrentIndex(nextIndex);
 }
 

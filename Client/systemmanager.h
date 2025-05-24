@@ -10,6 +10,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QTabWidget>
+#include <QTableWidget>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -42,43 +43,65 @@ enum UserState
 
 enum FriendShipState
 {
+    NotFriends = -1,
     Waiting = 0,
     Accepted = 1,
-    Blocked = 2
+    Blocked = 2,
+    Chat = 3
 };
 
+
 // Разделить класс на participant и friend, унаследовав от абстрактного User
-class Participant : public QWidget
+class UserProfile : public QDialog
 {
     Q_OBJECT
 public:
-    Participant(int id_, QString login_, UserState status_);
-    ~Participant() {};
+    UserProfile(int id_, QString login_, UserState status_, FriendShipState friendshipState);
+    ~UserProfile() {};
 
     QWidget* getMainWidget() { return mainWidget__; };
+    QString getLogin() {return login__;};
     UserState getState() {return state__;};
-    void setState(UserState status_) { state__ = status_; emit statusUpdate(mainWidget__, state__);};
+    void setState(UserState status_) { state__ = status_; emit statusUpdate(id__, state__);};
     int getId() { return id__; };
 private:
     int id__;
     QByteArray img__;
     QString login__;
 
-    QPushButton *openMenuBtn__;
     QPushButton *addFriendBtn__;
     QPushButton *sendMsgBtn__;
 
 
-    QWidget *menuWidget__;
     QLineEdit *messageEdit__;
     UserState state__;
+    FriendShipState friendshipState__;
 
     QWidget* mainWidget__;
 
 signals:
-    void statusUpdate(QWidget*, UserState);
+    void statusUpdate(int user_id_, UserState);
     void sendFriendRequest(int id_);
+    void sendWhisper(int id_, const QString &message_);
+
+public slots:
+    void showProfile();
 };
+
+class FriendsTable : public QTableWidget
+{
+    Q_OBJECT
+public:
+    FriendsTable(QWidget *parent = nullptr) : QTableWidget(parent) {};
+    FriendsTable(int rows, int columns, QWidget *parent = nullptr) : QTableWidget(rows, columns, parent) {};
+
+    void addFriend(UserProfile *user_);
+
+    ~FriendsTable() = default;
+public slots:
+    void on_friendStatusUpdate(int user_id_, UserState status_, const QString &userName_);
+};
+
 
 class HorizontalTabStyle : public QProxyStyle
 {
@@ -112,6 +135,7 @@ private:
     QList<Server*> servers_;
     QMap<int, Server*> serverIds_;
 };
+
 
 // создать виртуальный класс и унаследовать разные классы под ЛС и чаты севрера
 class Channel : public QObject
@@ -199,8 +223,7 @@ public:
     void deleteServer() { is_highest_perm__ ?  emit deleteServerSignal(id__) : void(); };
     void leaveServer() { emit leaveServerSignal(id__); };
     bool canDeleteServer() { return is_highest_perm__; };
-    void participantAdd(Participant *user_);
-    void participantUpdateStatus(int user_id_, UserState status_);
+    void participantAdd(UserProfile *user_);
 
 private:
     QVBoxLayout                                 *onlineLayout__;
@@ -212,7 +235,7 @@ private:
     int                                         user_perm__;
     int                                         admin_perm__;
     QMap<int, Channel*>                         channels__;
-    QMap<int, Participant*>                     participants__;
+    QMap<int, QPushButton*>                     participants__;
 
 
     QGroupBox *createParticipantsGroup();
@@ -222,10 +245,9 @@ signals:
     void getMessagesList(int channel_id_);
     void deleteServerSignal(int id_);
     void leaveServerSignal(int id_);
-    void sendFriendRequest(int server_id_, int user_id_);
 
 private slots:
-    void on_userStatusUpdate(QWidget*, UserState);
+    void on_userStatusUpdate(int user_id, UserState);
 };
 
 

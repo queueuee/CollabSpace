@@ -97,19 +97,34 @@ void ChatServer::handleWebSocketMessage(const QString &message)
             server_id = query.value(0).toInt();
 
         query.clear();
-        query.prepare(R"(
-            SELECT u.id AS user_id
-            FROM Users u
-            JOIN Server_User_relation sur ON u.id = sur.user_id
-            JOIN Channels c ON sur.server_id = c.server_id
-            WHERE c.id = :channel_id
-        )");
+        if (server_id > 0)
+            query.prepare(R"(
+                SELECT u.id AS user_id
+                FROM Users u
+                JOIN Server_User_relation sur ON u.id = sur.user_id
+                JOIN Channels c ON sur.server_id = c.server_id
+                WHERE c.id = :channel_id
+            )");
+        else
+            query.prepare(R"(
+                SELECT user1_id AS user_id FROM compadres
+                JOIN channels ON compadres.id = channels.compadres_id
+                WHERE channels.id = :channel_id
+
+                UNION
+
+                SELECT user2_id AS user_id FROM compadres
+                JOIN channels ON compadres.id = channels.compadres_id
+                WHERE channels.id = :channel_id;
+            )");
         query.bindValue(":channel_id", channel_id);
 
         if (query.exec())
         {
             while (query.next())
+            {
                 user_ids_to_send.insert(query.value("user_id").toInt());
+            }
         }
         if (message_type == TEXT)
         {
@@ -128,26 +143,8 @@ void ChatServer::handleWebSocketMessage(const QString &message)
             if (query.exec() && query.next())
             {
                 QString userName = query.value(0).toString();
-
                 QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODate);
-
-
-                QSqlQuery insertQuery;
-                insertQuery.prepare("INSERT INTO Message (author_id, channel_id, type, content, created_at) "
-                                    "VALUES (:author_id, :channel_id, :type, :content, :created_at) "
-                                    "RETURNING id");
-                insertQuery.bindValue(":author_id", sender_id);
-                insertQuery.bindValue(":channel_id", channel_id);
-                insertQuery.bindValue(":type", message_type);
-                insertQuery.bindValue(":content", content);
-                insertQuery.bindValue(":created_at", timestamp);
-
-                if (insertQuery.exec() && insertQuery.next()){
-                    int msg_id= insertQuery.value(0).toInt();
-                    msg[QString::number(msg_id)] = messageToJson(userName, content, timestamp);
-                }
-                else
-                    qWarning() << "Failed to insert message:" << insertQuery.lastError();
+                insertMessage(sender_id, userName, channel_id, message_type, content, timestamp, msg);
             }
             else
                 qWarning() << "User not found for ID:" << sender_id;
@@ -596,10 +593,20 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         QSqlQuery query;
         query.clear();
         query.prepare(R"(
-            SELECT s_u_r.user_id AS user_id, u.status AS user_status, u.login AS login FROM server_user_relation s_u_r
+            SELECT
+                s_u_r.user_id AS user_id,
+                u.status AS user_status,
+                u.login AS login,
+                COALESCE(c1.status, c2.status) AS friend_status
+            FROM server_user_relation s_u_r
             JOIN users u ON u.id = s_u_r.user_id
+            LEFT JOIN compadres c1
+                ON c1.user1_id = :user_id AND c1.user2_id = s_u_r.user_id
+            LEFT JOIN compadres c2
+                ON c2.user2_id = :user_id AND c2.user1_id = s_u_r.user_id
             WHERE s_u_r.server_id = :server_id;
         )");
+        query.bindValue(":user_id", user_id);
         query.bindValue(":server_id", server_id);
         query.exec();
 
@@ -610,6 +617,10 @@ void ChatServer::handleWebSocketMessage(const QString &message)
                 {"user_status", query.value("user_status").toInt()},
                 {"user_login", query.value("login").toString()}
             };
+            if (query.value("friend_status").toString().isEmpty())
+                user_info["friend_status"] = FriendShipState::NotFriends;
+            else
+                user_info["friend_status"] = query.value("friend_status").toInt();
             response_params.insert(query.value("user_id").toString(), user_info);
         }
         QJsonObject response{
@@ -690,7 +701,6 @@ void ChatServer::handleWebSocketMessage(const QString &message)
     else if(request_type == CREATE_FRIENDSHIP)
     {
         int sender_id = messageJson.value("sender_id").toInt();
-        int server_id = messageJson.value("server_id").toInt();
         int target_id = messageJson.value("target_id").toInt();
 
         user_ids_to_send.insert(target_id);
@@ -783,6 +793,185 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         }
         return;
     }
+    else if(request_type == GET_PERSONAL_CHATS_LIST)
+    {
+        int user_id = messageJson.value("user_id").toInt();
+        user_ids_to_send.insert(user_id);
+
+        QSqlQuery query;
+        query.clear();
+        query.prepare(R"(
+            SELECT
+                ch.id AS channel_id,
+                u.id AS other_user_id,
+                u.login AS other_user_login,
+                c.id AS compadres_id
+            FROM channels ch
+            JOIN compadres c ON c.id = ch.compadres_id
+            JOIN users u ON
+                ( (c.user1_id = :user_id AND u.id = c.user2_id) OR
+                  (c.user2_id = :user_id AND u.id = c.user1_id) )
+            WHERE ch.is_voice = false;
+        )");
+        query.bindValue(":user_id", user_id);
+        query.exec();
+
+        QJsonObject response_params;
+        while(query.next())
+        {
+            QJsonObject user_info{
+                {"user_id", query.value("other_user_id").toInt()},
+                {"user_login", query.value("other_user_login").toString()},
+                {"compadres_id", query.value("compadres_id").toInt()}
+            };
+            response_params.insert(query.value("channel_id").toString(), user_info);
+        }
+        QJsonObject response{
+            {"personal_chats_list", response_params}
+        };
+
+        messageJsonToSend = generateResponse(true, GET_PERSONAL_CHATS_LIST, response);
+    }
+    else if (request_type == SEND_WHISPER)
+    {
+        int author_id = messageJson.value("author_id").toInt();
+        int target_id = messageJson.value("target_id").toInt();
+        QString message = messageJson.value("message").toString();
+
+        QSqlQuery query;
+
+        QString sql = R"(
+        WITH existing_compadre AS (
+            SELECT id FROM compadres
+            WHERE
+                (user1_id = :author_id AND user2_id = :target_id)
+                OR
+                (user1_id = :target_id AND user2_id = :author_id)
+            LIMIT 1
+        ),
+        inserted_compadre AS (
+            INSERT INTO compadres (user1_id, user2_id, status)
+            SELECT :author_id, :target_id, :friendshipState
+            WHERE NOT EXISTS (SELECT 1 FROM existing_compadre)
+            RETURNING id
+        ),
+        compadre_id_union AS (
+            SELECT id FROM existing_compadre
+            UNION ALL
+            SELECT id FROM inserted_compadre
+        ),
+        existing_channel AS (
+            SELECT id FROM channels
+            WHERE compadres_id = (SELECT id FROM compadre_id_union)
+            LIMIT 1
+        ),
+        inserted_channel AS (
+            INSERT INTO channels (compadres_id, owner_id, is_voice, name)
+            SELECT id, :author_id, false, 'whispers' FROM compadre_id_union
+            WHERE NOT EXISTS (SELECT 1 FROM existing_channel)
+            RETURNING id
+        )
+        SELECT
+            (SELECT id FROM inserted_compadre) AS new_compadre_id,
+            (SELECT id FROM existing_compadre) AS existing_compadre_id,
+            (SELECT id FROM inserted_channel) AS new_channel_id,
+            (SELECT id FROM existing_channel) AS existing_channel_id,
+            u_target.login AS target_login,
+            u_author.login AS author_login
+        FROM users u_target, users u_author
+        WHERE u_target.id = :target_id AND u_author.id = :author_id
+    )";
+
+        query.prepare(sql);
+        query.bindValue(":author_id", author_id);
+        query.bindValue(":target_id", target_id);
+        query.bindValue(":friendshipState", FriendShipState::Chat);
+        query.exec();
+
+        if (query.next())
+        {
+            QVariant new_compadre_id = query.value("new_compadre_id");
+            QVariant existing_compadre_id = query.value("existing_compadre_id");
+            QVariant new_channel_id = query.value("new_channel_id");
+            QVariant existing_channel_id = query.value("existing_channel_id");
+            QString target_login = query.value("target_login").toString();
+            QString author_login = query.value("author_login").toString();
+
+            QJsonObject msg;
+            QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODate);
+
+            int compadre_id = new_compadre_id.isNull() ? existing_compadre_id.toInt() : new_compadre_id.toInt();
+            int channel_id = new_channel_id.isNull() ? existing_channel_id.toInt() : new_channel_id.toInt();
+
+            // Отправка автору сообщения
+            {
+                user_ids_to_send.insert(author_id);
+
+                if (!new_channel_id.isNull())
+                {
+                    insertMessage(author_id, author_login, new_channel_id.toInt(), TEXT, message, timestamp, msg);
+                    QJsonObject response_params;
+                    QJsonObject user_info{
+                        {"user_id", target_id},
+                        {"user_login", target_login},
+                        {"compadres_id", compadre_id}
+                    };
+                    response_params.insert(QString::number(channel_id), user_info);
+                    QJsonObject response{
+                        {"personal_chats_list", response_params}
+                    };
+
+                    messageJsonToSend = generateResponse(true, GET_PERSONAL_CHATS_LIST, response);
+                }
+                else if (!existing_channel_id.isNull())
+                {
+                    messageJsonToSend = {
+                        {REQUEST, MESSAGE},
+                        {TYPE, TEXT},
+                        {"server_id", 0},
+                        {"channel_id", existing_channel_id.toInt()}
+                    };
+                    insertMessage(author_id, author_login, existing_channel_id.toInt(), TEXT, message, timestamp, msg);
+
+                    messageJsonToSend["message"] = msg;
+                }
+                broadcastMessage(messageJsonToSend, user_ids_to_send);
+            }
+            // Отправка цели сообщения
+            {
+                user_ids_to_send.insert(target_id);
+
+                if (!new_channel_id.isNull())
+                {
+                    QJsonObject response_params;
+                    QJsonObject user_info{
+                        {"user_id", author_id},
+                        {"user_login", author_login},
+                        {"compadres_id", compadre_id}
+                    };
+                    response_params.insert(QString::number(channel_id), user_info);
+                    QJsonObject response{
+                        {"personal_chats_list", response_params}
+                    };
+
+                    messageJsonToSend = generateResponse(true, GET_PERSONAL_CHATS_LIST, response);
+                }
+                else if (!existing_channel_id.isNull())
+                {
+                    messageJsonToSend = {
+                        {REQUEST, MESSAGE},
+                        {TYPE, TEXT},
+                        {"server_id", 0},
+                        {"channel_id", existing_channel_id.toInt()}
+                    };
+
+                    messageJsonToSend["message"] = msg;
+                }
+                broadcastMessage(messageJsonToSend, user_ids_to_send);
+            }
+        }
+        return;
+    }
 
     broadcastMessage(messageJsonToSend, user_ids_to_send);
 }
@@ -814,6 +1003,27 @@ bool ChatServer::insertChannel(int server_id, int owner_id, const QString& name,
     }
 }
 
+bool ChatServer::insertMessage(int sender_id, QString &userName, int channel_id, const QString &message_type, QString &content, QString &created_at, QJsonObject &msgHandler)
+{
+    QSqlQuery insertQuery;
+    insertQuery.prepare("INSERT INTO Message (author_id, channel_id, type, content, created_at) "
+                        "VALUES (:author_id, :channel_id, :type, :content, :created_at) "
+                        "RETURNING id");
+    insertQuery.bindValue(":author_id", sender_id);
+    insertQuery.bindValue(":channel_id", channel_id);
+    insertQuery.bindValue(":type", message_type);
+    insertQuery.bindValue(":content", content);
+    insertQuery.bindValue(":created_at", created_at);
+
+    if (insertQuery.exec() && insertQuery.next()){
+        int msg_id= insertQuery.value(0).toInt();
+        msgHandler[QString::number(msg_id)] = messageToJson(userName, content, created_at);
+        return true;
+    }
+    else
+        qWarning() << "Failed to insert message:" << insertQuery.lastError();
+    return false;
+}
 
 QJsonObject ChatServer::generateResponse(bool is_positive_, const QJsonObject &response_params_)
 {

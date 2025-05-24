@@ -3,6 +3,7 @@
 // Requests
 #define ANSWER "answer"
 #define MESSAGE "message"
+#define SEND_WHISPER "send_whisper"
 #define REGISTER_USER "register_user"
 #define LOGIN_USER "login_user"
 #define LOGOUT_USER "logout_user"
@@ -27,6 +28,7 @@
 #define GET_SERVER_PARTICIPANTS_LIST "get_server_participants_list"
 #define GET_FRIEND_REQUESTS "get_friend_requests"
 #define GET_FRIEND_LIST "get_friend_list"
+#define GET_PERSONAL_CHATS_LIST "get_personal_chats_list"
 
 #define TYPE "type"
 // Answer types

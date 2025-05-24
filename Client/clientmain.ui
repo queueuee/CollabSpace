@@ -72,6 +72,19 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_6">
                 <item>
+                 <widget class="QPushButton" name="backToPersonalMsgsListBtn">
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>&lt;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QLabel" name="label_2">
                   <property name="text">
                    <string>Сообщения</string>
@@ -113,47 +126,54 @@
                </layout>
               </item>
               <item>
-               <widget class="QScrollArea" name="scrollArea">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+               <widget class="QStackedWidget" name="personalMessagesStackedWidget">
+                <property name="currentIndex">
+                 <number>0</number>
                 </property>
-                <property name="widgetResizable">
-                 <bool>true</bool>
-                </property>
-                <widget class="QWidget" name="scrollAreaWidgetContents">
-                 <property name="geometry">
-                  <rect>
-                   <x>0</x>
-                   <y>0</y>
-                   <width>399</width>
-                   <height>294</height>
-                  </rect>
-                 </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_5">
+                <widget class="QWidget" name="personalMessagesListPage">
+                 <layout class="QVBoxLayout" name="verticalLayout_17">
                   <item>
-                   <widget class="QLabel" name="label_3">
-                    <property name="text">
-                     <string>Собеседник 1</string>
+                   <widget class="QScrollArea" name="personalMessagesListScrollArea">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
                     </property>
+                    <property name="widgetResizable">
+                     <bool>true</bool>
+                    </property>
+                    <widget class="QWidget" name="personalMessagesListScrollAreaWidgetContents">
+                     <property name="geometry">
+                      <rect>
+                       <x>0</x>
+                       <y>0</y>
+                       <width>381</width>
+                       <height>276</height>
+                      </rect>
+                     </property>
+                     <layout class="QVBoxLayout" name="verticalLayout_5">
+                      <item>
+                       <spacer name="verticalSpacer_2">
+                        <property name="orientation">
+                         <enum>Qt::Vertical</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>20</width>
+                          <height>40</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
                    </widget>
                   </item>
-                  <item>
-                   <spacer name="verticalSpacer_2">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>40</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
                  </layout>
+                </widget>
+                <widget class="QWidget" name="page_6">
+                 <layout class="QVBoxLayout" name="verticalLayout_18"/>
                 </widget>
                </widget>
               </item>
@@ -209,7 +229,7 @@
                 <widget class="QWidget" name="page_3">
                  <layout class="QVBoxLayout" name="verticalLayout_15">
                   <item>
-                   <widget class="QTableWidget" name="tableWidget">
+                   <widget class="FriendsTable" name="tableWidget">
                     <property name="autoScroll">
                      <bool>false</bool>
                     </property>
@@ -247,8 +267,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>380</width>
-                       <height>276</height>
+                       <width>98</width>
+                       <height>28</height>
                       </rect>
                      </property>
                      <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -823,6 +843,11 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <extends>QTabWidget</extends>
    <header location="global">../../../../clientmain.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FriendsTable</class>
+   <extends>QTableWidget</extends>
+   <header location="global">../../../../clientmain.h</header>
   </customwidget>
  </customwidgets>
  <resources>

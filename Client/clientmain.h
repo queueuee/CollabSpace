@@ -45,6 +45,11 @@ private slots:
     void on_updateUser(const QJsonObject &response);
     void on_friendshipAccepted(const int id, const QString &username, int userState);
     void on_addFriendRequest(const int id, const QString &username);
+    void on_addPersonalChat(const int channel_id, const QString &username, const int user_id, const int compadres_id);
+    void on_sendWhisper(const int target_id, const QString& message_);
+    void on_sendMessageFromChannel(const int channel_id_, const int mess_type_, const QString &message_);
+    void on_getMessagesList(const int channel_id_);
+    void on_sendFriendRequest(const int user_id_);
     void on_joinServer(int id);
 
     void startVoiceChat();            // Старт голосового чата
@@ -61,6 +66,8 @@ private slots:
 
     void on_toFriendRequestsBtn_clicked();
 
+    void on_backToPersonalMsgsListBtn_clicked();
+
 private:
     void createServer(const QString &name_,
                       const QString &description_,
@@ -72,6 +79,7 @@ private:
     void getServerParticipantsList(int id_);
     void getFriendRequests();
     void getFriendsList();
+    void getPersonalChatsList();
     void clearOpenServers();
     void logOut();
 
@@ -82,7 +90,9 @@ private:
     NetworkManager                                  *networkManager__;
 
     QMap<int, Server*>                              userServers__;
-    QMap<int, Participant*>                         userFriends__;
+    QMap<int, Channel*>                             personalMessages__;
+    QMap<int, UserProfile*>                         userFriends__;
+    QMap<int, UserProfile*>                         relatedUsers__;
     QMap<int, ShortServer*>                         openServers__;
 
 

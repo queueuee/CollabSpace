@@ -25,9 +25,11 @@ enum UserState
 
 enum FriendShipState
 {
+    NotFriends = -1,
     Waiting = 0,
     Accepted = 1,
-    Blocked = 2
+    Blocked = 2,
+    Chat = 3
 };
 
 
@@ -62,6 +64,7 @@ private:
     QJsonObject generateResponse(bool is_positive, const QJsonObject &response_params);
     QJsonObject generateResponse(bool is_positive_, const QString requestType_, const QJsonObject &response_params_);
     bool insertChannel(int server_id, int owner_id, const QString& name, bool is_voice, QJsonArray& channels_info);
+    bool insertMessage(int sender_id, QString &userName, int channel_id, const QString& message_type, QString& content, QString &created_at, QJsonObject &msgHandler);
     QJsonObject messageToJson(const QString &userName_,
                               const QString &content_,
                               const QString &timestamp_);

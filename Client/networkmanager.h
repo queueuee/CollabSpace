@@ -55,6 +55,7 @@ signals:
     void updateUser(const QJsonObject &answer);
     void acceptedFriendship(const int id, const QString &username, int userState);
     void addFriendRequest(const int id, const QString &username);
+    void personalChat(const int key, const QString &username, const int user_id, const int compadres_id);
 
 private slots:
     void sendAudio();

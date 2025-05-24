@@ -180,7 +180,21 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
             emit acceptedFriendship(key, username, user_status);
         }
     }
+    else if(request_type == GET_PERSONAL_CHATS_LIST)
+    {
+        QJsonObject getFriendsObj = messageJson_["info"].toObject()["personal_chats_list"].toObject();
+        qDebug() << getFriendsObj;
+        for (auto it = getFriendsObj.begin(); it != getFriendsObj.end(); ++it)
+        {
+            // key - channel_id
+            int key = it.key().toInt();
+            QString username = it.value().toObject()["user_login"].toString();
+            int user_id = it.value().toObject()["user_id"].toInt();
+            int compadres_id = it.value().toObject()["compadres_id"].toInt();
 
+            emit personalChat(key, username, user_id, compadres_id);
+        }
+    }
 }
 
 

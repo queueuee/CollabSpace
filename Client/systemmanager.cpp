@@ -2,47 +2,48 @@
 #include "../possible_requests.h"
 
 // Класс Participant
-Participant::Participant(int id_, QString login_, UserState status_) :
+UserProfile::UserProfile(int id_, QString login_, UserState status_, FriendShipState friendshipState_) :
     id__(id_),
     login__(login_),
-    state__(status_)
+    state__(status_),
+    friendshipState__(friendshipState_)
 {
-    mainWidget__ = new QWidget();
-    QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget__);
-    mainWidget__->setLayout(mainLayout);
+    setWindowTitle("Профиль " + login__);
+    setMinimumSize(QSize(100, 200));
 
-    menuWidget__ = new QWidget();
-    QHBoxLayout *menuLayout = new QHBoxLayout(menuWidget__);
-    menuWidget__->setLayout(menuLayout);
-    menuWidget__->setVisible(false);
+    mainWidget__ = new QWidget();
+    QHBoxLayout *mainLayout = new QHBoxLayout(mainWidget__);
+    mainWidget__->setLayout(mainLayout);
 
     messageEdit__ = new QLineEdit();
 
-    openMenuBtn__ = new QPushButton(login__);
-
-    addFriendBtn__ = new QPushButton("+");
-    addFriendBtn__->setMaximumWidth(20);
-    connect(addFriendBtn__, &QPushButton::clicked, this, [=](){
-        emit sendFriendRequest(id__);
-    });
+    if (friendshipState__ == FriendShipState::NotFriends || friendshipState__ == FriendShipState::Chat)
+    {
+        addFriendBtn__ = new QPushButton("+");
+        addFriendBtn__->setMaximumWidth(30);
+        connect(addFriendBtn__, &QPushButton::clicked, this, [=](){
+            emit sendFriendRequest(id__);
+        });
+        mainLayout->addWidget(addFriendBtn__);
+    }
 
     sendMsgBtn__ = new QPushButton("->");
-    sendMsgBtn__->setMaximumWidth(20);
-
-    openMenuBtn__->setFlat(true);
-    connect(openMenuBtn__, &QPushButton::clicked, this, [=](){
-        menuWidget__->setVisible(!menuWidget__->isVisible());
+    sendMsgBtn__->setMaximumWidth(30);
+    connect(sendMsgBtn__, &QPushButton::clicked, this, [=](){
+        emit sendWhisper(id__, messageEdit__->text());
+        messageEdit__->clear();
     });
 
+    mainLayout->addWidget(messageEdit__);
+    mainLayout->addWidget(sendMsgBtn__);
 
-    mainLayout->addWidget(openMenuBtn__);
-    menuLayout->addWidget(addFriendBtn__);
-    menuLayout->addWidget(messageEdit__);
-    menuLayout->addWidget(sendMsgBtn__);
-
-    mainLayout->addWidget(menuWidget__);
+    setLayout(mainLayout);
 }
 
+void UserProfile::showProfile()
+{
+    this->show();
+}
 
 // Класс HorizontalTabStyle
 QSize HorizontalTabStyle::sizeFromContents(ContentsType type, const QStyleOption* option,
@@ -323,7 +324,7 @@ Server::Server(int id_,
     mainWidget__->setLayout(mainLayout);
 }
 
-void Server::participantAdd(Participant *user_)
+void Server::participantAdd(UserProfile *user_)
 {
     if (participants__.contains(user_->getId()))
     {
@@ -331,30 +332,21 @@ void Server::participantAdd(Participant *user_)
         return;
     }
 
-    participants__[user_->getId()] = user_;
+    QPushButton *userBtn = new QPushButton(user_->getLogin());
+    participants__[user_->getId()] = userBtn;
+    userBtn->setFlat(true);
 
-    connect(user_, &Participant::statusUpdate, this, &Server::on_userStatusUpdate);
-    connect(user_, &Participant::sendFriendRequest, this, [=]()
-    {
-        emit sendFriendRequest(id__, user_->getId());
-    });
+    connect(user_, &UserProfile::statusUpdate, this, &Server::on_userStatusUpdate);
+    connect(userBtn, &QPushButton::clicked, user_, &UserProfile::showProfile);
 
     switch(user_->getState()){
     case UserState::Online:
-        onlineLayout__->addWidget(user_->getMainWidget());
+        onlineLayout__->addWidget(userBtn);
         break;
     default:
-        offlineLayout__->addWidget(user_->getMainWidget());
+        offlineLayout__->addWidget(userBtn);
         break;
     }
-}
-
-void Server::participantUpdateStatus(int user_id_, UserState status_)
-{
-    if (!participants__.contains(user_id_))
-        return;
-
-    participants__[user_id_]->setState(status_);
 }
 
 QGroupBox *Server::createParticipantsGroup() {
@@ -377,8 +369,9 @@ QGroupBox *Server::createParticipantsGroup() {
     return groupBox;
 }
 
-void Server::on_userStatusUpdate(QWidget* userWidget_, UserState state_)
+void Server::on_userStatusUpdate(int user_id_, UserState state_)
 {
+    QPushButton *userWidget_ = participants__[user_id_];
     for (int i = 0; i < onlineLayout__->count(); ++i) {
         if (onlineLayout__->itemAt(i)->widget() == userWidget_) {
             onlineLayout__->removeWidget(userWidget_);
@@ -488,6 +481,7 @@ void Channel::createTextChannel()
     mainWidget__->setLayout(textChannelLayout);
 
     connect(sendButton, &QPushButton::clicked, this, [=](){
+        QApplication::beep();
         emit sendMessageFromChannel(id__, 0, messageInput->text());
         messageInput->clear();
     });
@@ -504,4 +498,134 @@ SystemManager::SystemManager(NetworkManager *networkManager_, QObject *parent)
 void SystemManager::handleConnectionFailed()
 {
     QMessageBox::warning(nullptr, "Connection Error", "Failed to connect to the server.");
+}
+
+void FriendsTable::addFriend(UserProfile *user_)
+{
+    QString username = user_->getLogin();
+    int stateColumn = user_->getState();
+    int rowCount = this->rowCount();
+    bool needToInsert = true;
+
+    // Проверка, все ли строки в нужном столбце заняты непустыми значениями
+    for (int row = 0; row < rowCount; ++row)
+    {
+        QTableWidgetItem* item = this->item(row, stateColumn);
+        if (!item || item->text().isEmpty())
+        {
+            needToInsert = false;
+            break;
+        }
+    }
+
+    // Если есть хотя бы одна пустая ячейка — вставляем туда, иначе вставляем новую строку
+    if (needToInsert)
+    {
+        this->setRowCount(rowCount + 1);
+
+        // Сдвигаем строки вниз в выбранном столбце
+        for (int row = rowCount; row > 0; --row)
+        {
+            QTableWidgetItem* aboveItem = this->item(row - 1, stateColumn);
+            if (aboveItem)
+            {
+                this->setItem(row, stateColumn, new QTableWidgetItem(*aboveItem));
+            }
+            else
+            {
+                this->setItem(row, stateColumn, new QTableWidgetItem(""));
+            }
+        }
+
+        QTableWidgetItem* newItem = new QTableWidgetItem(username);
+        this->setItem(0, stateColumn, newItem);
+    }
+    else
+    {
+        // Вставка в первую пустую ячейку
+        for (int row = 0; row < rowCount; ++row)
+        {
+            QTableWidgetItem* item = this->item(row, stateColumn);
+            if (!item || item->text().isEmpty())
+            {
+                this->setItem(row, stateColumn, new QTableWidgetItem(username));
+                break;
+            }
+        }
+    }
+}
+
+void FriendsTable::on_friendStatusUpdate(int user_id_, UserState status_, const QString &userName_)
+{
+    int rows = this->rowCount();
+    int cols = this->columnCount();
+    int currentRow = -1;
+    int currentColumn = -1;
+
+    for (int row = 0; row < rows; ++row)
+    {
+        for (int col = 0; col < cols; ++col)
+        {
+            QTableWidgetItem* item = this->item(row, col);
+            if (item && item->text() == userName_)
+            {
+                currentRow = row;
+                currentColumn = col;
+                break;
+            }
+        }
+        if (currentRow != -1)
+            break;
+    }
+
+    if (currentRow == -1)
+        return;
+
+    QTableWidgetItem* movedItem = this->takeItem(currentRow, currentColumn);
+    this->setItem(currentRow, currentColumn, nullptr);
+
+    bool isRowEmpty = true;
+    for (int col = 0; col < cols; ++col)
+    {
+        QTableWidgetItem* item = this->item(currentRow, col);
+        if (item && !item->text().isEmpty())
+        {
+            isRowEmpty = false;
+            break;
+        }
+    }
+
+    if (isRowEmpty)
+    {
+        this->removeRow(currentRow);
+        --rows;
+        if (currentRow < rows)
+        {
+            if (currentRow < rows) {
+                if (currentRow < rows)
+                    rows = this->rowCount();
+            }
+        }
+    }
+
+    int targetColumn = static_cast<int>(status_);
+    int insertRow = rows;
+
+    for (int row = 0; row < rows; ++row)
+    {
+        QTableWidgetItem* item = this->item(row, targetColumn);
+        if (!item || item->text().isEmpty())
+        {
+            insertRow = row;
+            break;
+        }
+    }
+
+    if (insertRow == rows)
+    {
+        this->setRowCount(rows + 1);
+    }
+
+    this->setItem(insertRow, targetColumn, movedItem);
+
 }
