@@ -832,6 +832,71 @@ void ChatServer::handleWebSocketMessage(const QString &message)
 
         messageJsonToSend = generateResponse(true, GET_PERSONAL_CHATS_LIST, response);
     }
+    else if(request_type == CONNECT_TO_VOICE_CHANNEL)
+    {
+        int user_id = messageJson.value("user_id").toInt();
+        int channel_id = messageJson.value("channel_id").toInt();
+
+        QSqlQuery query;
+        query.clear();
+        query.prepare(R"(
+            SELECT login FROM users
+            WHERE id = :user_id
+        )");
+        query.bindValue(":user_id", user_id);
+        query.exec();
+        query.next();
+        User user;
+        user.id = user_id;
+        user.name = query.value("login").toString();
+
+        if(voiceChannels__.contains(channel_id))
+        {
+            voiceChannels__[channel_id].push_back(user);
+        }
+        else
+        {
+            voiceChannels__.insert(channel_id, QList<User>{user});
+        }
+
+        query.clear();
+        query.prepare(R"(
+            SELECT compadres_id, server_id FROM channels
+            WHERE id = :channel_id
+        )");
+        query.bindValue(":channel_id", channel_id);
+        query.exec();
+        query.next();
+        QJsonObject response{
+            {"server_id", query.value("server_id").toInt()},
+            {"compadres_id", query.value("compadres_id").toInt()},
+            {"channel_id", channel_id},
+        };
+
+        query.clear();
+        query.prepare(R"(
+            SELECT DISTINCT u.id, u.login
+            FROM Channels c
+            JOIN Servers s ON c.server_id = s.id
+            JOIN Server_User_relation sur ON s.id = sur.server_id
+            JOIN Users u ON sur.user_id = u.id
+            WHERE c.id = :channel_id;
+        )");
+        query.bindValue(":channel_id", channel_id);
+        query.exec();
+        while(query.next())
+        {
+            user_ids_to_send.insert(query.value(0).toInt());
+        }
+
+        QJsonObject users{
+            {"id", user.id},
+            {"login", user.name},
+        };
+        response.insert("users", users);
+
+        messageJsonToSend = generateResponse(true, CONNECT_TO_VOICE_CHANNEL, response);
+    }
     else if (request_type == SEND_WHISPER)
     {
         int author_id = messageJson.value("author_id").toInt();

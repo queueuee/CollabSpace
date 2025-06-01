@@ -183,7 +183,6 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
     else if(request_type == GET_PERSONAL_CHATS_LIST)
     {
         QJsonObject getFriendsObj = messageJson_["info"].toObject()["personal_chats_list"].toObject();
-        qDebug() << getFriendsObj;
         for (auto it = getFriendsObj.begin(); it != getFriendsObj.end(); ++it)
         {
             // key - channel_id
@@ -194,6 +193,17 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
 
             emit personalChat(key, username, user_id, compadres_id);
         }
+    }
+    else if(request_type == CONNECT_TO_VOICE_CHANNEL)
+    {
+        QJsonObject getBody = messageJson_["info"].toObject();
+        QJsonObject getUsersObj = getBody["users"].toObject();
+
+        emit addUserToVoiceChannel(getUsersObj["id"].toInt(),
+                                   getUsersObj["login"].toString(),
+                                   getBody["server_id"].toInt(),
+                                   getBody["compadres_id"].toInt(),
+                                   getBody["channel_id"].toInt());
     }
 }
 

@@ -56,6 +56,7 @@ signals:
     void acceptedFriendship(const int id, const QString &username, int userState);
     void addFriendRequest(const int id, const QString &username);
     void personalChat(const int key, const QString &username, const int user_id, const int compadres_id);
+    void addUserToVoiceChannel(const int user_id, const QString &username, const int server_id, const int compadres_id, const int channel_id);
 
 private slots:
     void sendAudio();

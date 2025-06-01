@@ -32,10 +32,18 @@
 #include <QInputDialog>
 #include <QScrollBar>
 #include <QTimer>
+#include <QTextBrowser>
+#include <QSplitter>
+#include <QPair>
+#include <QSharedPointer>
+
 
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
+
+
+#include <gst/gst.h>
 
 enum UserState
 {
@@ -89,6 +97,23 @@ signals:
 
 public slots:
     void showProfile();
+};
+
+class VideoChatWindow : public QDialog
+{
+    Q_OBJECT
+public:
+    VideoChatWindow();
+    ~VideoChatWindow();
+    void startVideo(const QString &ip_, const QString &port);
+    void addVideo(int id_, const QString &name_, const QString &ip_, const QString &port);
+    void removeVideo(int id_);
+protected:
+    void closeEvent(QCloseEvent *event) override; // <-- переопределяем
+
+private:
+    QMap<int, QPair<QSharedPointer<GstElement>, QWidget*>> videoWidgets__;
+    QSplitter *videosHandler;
 };
 
 class FriendsTable : public QTableWidget
@@ -172,6 +197,8 @@ public:
     void setLastMessage(const QString &sender_name_,
                         QString &content_,
                         const QString &created_at);
+    void addUserToVoice(UserProfile *user_);
+    bool isVoice() { return is_voice__; };
     ~Channel() {};
 
 private:
@@ -185,11 +212,18 @@ private:
     //QTextEdit                                   *chatWindow;
     QScrollArea                                 *messagesScrollArea__;
     QVBoxLayout                                 *messagesLayout__;
+    QVBoxLayout                                 *voiceUsersLayout__;
+
+    QMap<int, QPushButton*>                     voiceUsers;
     void createVoiceChannel();
     void createTextChannel();
 
 signals:
     void sendMessageFromChannel(int channel_id, int message_type, const QString &message);
+    void connectToVoiceChannel(int channel_id);
+    void disconnectFromVoiceChannel(int channel_id);
+    void startVideoChat(int channel_id);
+    void connectToVideoChat(int channel_id, int user_id);
 };
 
 class ShortServer : public QPushButton
@@ -241,6 +275,7 @@ public:
     ~Server() {};
 
     QMap<int, Channel*>  getChannels() {return channels__;};
+    QMap<int, Channel*>  voiceChannels();
     void deleteServer() { is_highest_perm__ ?  emit deleteServerSignal(id__) : void(); };
     void leaveServer() { emit leaveServerSignal(id__); };
     bool canDeleteServer() { return is_highest_perm__; };
@@ -257,6 +292,7 @@ private:
     int                                         admin_perm__;
     QMap<int, Channel*>                         channels__;
     QMap<int, QPushButton*>                     participants__;
+    QString                                     serverAdr__ = "0.0.0.0";
 
 
     QGroupBox *createParticipantsGroup();

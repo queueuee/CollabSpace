@@ -15,6 +15,14 @@ find_package(Qt5 REQUIRED COMPONENTS Core
                                      Multimedia
                                      Sql
                                      WebSockets)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GST REQUIRED gstreamer-1.0>=1.0
+                                gstreamer-video-1.0
+                                gstreamer-plugins-base-1.0)
+
+include_directories(${GST_INCLUDE_DIRS})
+link_directories(${GST_LIBRARY_DIRS})
+add_definitions(${GST_CFLAGS_OTHER})
 
 # Определение исходных файлов
 set(PROJECT_SOURCES
@@ -33,7 +41,7 @@ add_executable(Client ${PROJECT_SOURCES}
 )
 
 # Привязка библиотек к целевой программе
-target_link_libraries(Client PRIVATE Qt5::Core Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::WebSockets)
+target_link_libraries(Client Qt5::Core Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::WebSockets ${GST_LIBRARIES})
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

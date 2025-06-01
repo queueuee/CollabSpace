@@ -16,6 +16,8 @@
 #define LEAVE_SERVER "leave_server"
 #define RENAME_SERVER "rename_server"
 #define DELETE_CHANNEL "delete_channel"
+#define CONNECT_TO_VOICE_CHANNEL "connect_to_voice_channel"
+#define DISCONNECT_FROM_VOICE_CHANNEL "disconnect_from_voice_channel"
 
 
 #define USER_LEAVE_SERVER_INFO "user_leave_server_info"

@@ -51,14 +51,20 @@ private slots:
     void on_getMessagesList(const int channel_id_);
     void on_sendFriendRequest(const int user_id_);
     void on_joinServer(int id);
+    void connectToVoiceChannel(int id);
+    void disconnectFromVoiceChannel(int id);
+    void addUserToVoiceChannel(const int user_id,
+                               const QString &username,
+                               const int server_id,
+                               const int compadres_id,
+                               const int channel_id);
+    void on_startVideoChatBtn(int channel_id);
+    void on_connectToVideoChatBtn(int channel_id, int user_id);
+
 
     void startVoiceChat();            // Старт голосового чата
 
     void leaveVoiceChat();            // Остановка голосового чата
-
-    void on_micOnOffButton_clicked();
-
-    void on_headersOnOffButton_clicked();
 
     void handleConnectionFailed();
 
@@ -94,13 +100,14 @@ private:
     QMap<int, UserProfile*>                         userFriends__;
     QMap<int, UserProfile*>                         relatedUsers__;
     QMap<int, ShortServer*>                         openServers__;
+    VideoChatWindow*                                videoChatWindow__;
 
 
-    bool                                        micEnabled__ = true;
-    bool                                        headphonesEnabled__ = true;
+    bool                                            micEnabled__ = true;
+    bool                                            headphonesEnabled__ = true;
 
 
-    Ui::ClientMain                              *ui__;
+    Ui::ClientMain                                  *ui__;
 };
 
 #endif // CLIENTMAIN_H

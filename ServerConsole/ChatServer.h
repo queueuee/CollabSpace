@@ -32,6 +32,11 @@ enum FriendShipState
     Chat = 3
 };
 
+struct User
+{
+    QString name;
+    int id;
+};
 
 class ChatServer : public QObject {
     Q_OBJECT
@@ -57,6 +62,7 @@ private:
     QMap<QWebSocket *, int> clientsWebSocket;
     QUdpSocket *udpSocket;
     QHash<QString, QPair<QHostAddress, quint16>> clientsUDP;
+    QMap<int, QList<User>> voiceChannels__;
 
     void parseJson(QJsonObject &messageJson_);
     void broadcastMessage(const QJsonObject &message, QSet<int> user_ids_to_send_);

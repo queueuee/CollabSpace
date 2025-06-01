@@ -10,6 +10,8 @@ ClientMain::ClientMain(QWidget *parent)
     ui__(new Ui::ClientMain)
 {
     ui__->setupUi(this);
+    videoChatWindow__ = new VideoChatWindow();
+
     ui__->voiceDisconnectButton->setVisible(false);
 
     ui__->tabWidget->tabBar()->setTabVisible(2, false);
@@ -26,6 +28,7 @@ ClientMain::ClientMain(QWidget *parent)
     connect(networkManager__, &NetworkManager::acceptedFriendship, this, &ClientMain::on_friendshipAccepted);
     connect(networkManager__, &NetworkManager::addFriendRequest, this, &ClientMain::on_addFriendRequest);
     connect(networkManager__, &NetworkManager::personalChat, this, &ClientMain::on_addPersonalChat);
+    connect(networkManager__, &NetworkManager::addUserToVoiceChannel, this, &ClientMain::addUserToVoiceChannel);
 
     // Авторизация
     Authorization auth(networkManager__);
@@ -138,6 +141,14 @@ void ClientMain::on_getUserServerList(const QJsonObject &info)
             networkManager__->sendMessageJsonToServer(messageJson);
         });
 
+        for (auto &voiceChannel : server->voiceChannels())
+        {
+            connect(voiceChannel, &Channel::connectToVoiceChannel, this, &ClientMain::connectToVoiceChannel);
+            connect(voiceChannel, &Channel::disconnectFromVoiceChannel, this, &ClientMain::disconnectFromVoiceChannel);
+            connect(voiceChannel, &Channel::startVideoChat, this, &ClientMain::on_startVideoChatBtn);
+            connect(voiceChannel, &Channel::connectToVideoChat, this, &ClientMain::on_connectToVideoChatBtn);
+        }
+
         userServers__[server_id.toInt()] = server;
 
         ui__->tabWidget->insertServerTab(server, server_id.toInt());
@@ -239,6 +250,52 @@ void ClientMain::on_joinServer(int id_)
     networkManager__->sendMessageJsonToServer(joinServerRequest);
 }
 
+void ClientMain::connectToVoiceChannel(int id)
+{
+    QJsonObject connectToChannelRequest{
+        {REQUEST, CONNECT_TO_VOICE_CHANNEL},
+        {"user_id", userData__.user_id},
+        {"channel_id", id},
+    };
+
+    networkManager__->sendMessageJsonToServer(connectToChannelRequest);
+}
+
+void ClientMain::disconnectFromVoiceChannel(int id)
+{
+    QJsonObject logoutRequest{
+        {REQUEST, DISCONNECT_FROM_VOICE_CHANNEL},
+        {"user_id", userData__.user_id},
+        {"channel_id", id},
+    };
+
+    networkManager__->sendMessageJsonToServer(logoutRequest);
+}
+
+void ClientMain::addUserToVoiceChannel(const int user_id, const QString &username, const int server_id, const int compadres_id, const int channel_id)
+{
+    if (server_id > 0)
+    {
+        userServers__[server_id]->getChannels()[channel_id]->addUserToVoice(relatedUsers__[user_id]);
+        return;
+    }
+}
+
+void ClientMain::on_startVideoChatBtn(int channel_id)
+{
+    videoChatWindow__->startVideo("0.0.0.0", "5002");
+    videoChatWindow__->show();
+}
+
+void ClientMain::on_connectToVideoChatBtn(int channel_id, int user_id)
+{
+    if (user_id == userData__.user_id)
+        return;
+
+    videoChatWindow__->addVideo(1, "user2", "0.0.0.0", "5002");
+    videoChatWindow__->show();
+}
+
 void ClientMain::leaveVoiceChat()
 {
     //systemManager__->leaveVoiceChat();
@@ -246,45 +303,6 @@ void ClientMain::leaveVoiceChat()
 
     ui__->voiceDisconnectButton->setVisible(false);
     ui__->voiceConnectButton->setVisible(true);
-}
-
-void ClientMain::on_micOnOffButton_clicked()
-{
-    micEnabled__ = !micEnabled__;
-    //systemManager__ -> onOffMicrophone(micEnabled__);
-    ui__->micOnOffButton->setFlat(micEnabled__);
-    ui__->micOnOffButton->setIcon(micEnabled__ ? QIcon(":/icons/mic.png") : QIcon(":/icons/micOff.png"));
-
-    if (micEnabled__ && !headphonesEnabled__)
-    {
-        headphonesEnabled__ = true;
-    //    systemManager__ -> onOffHeadphones(headphonesEnabled__);
-        ui__->headersOnOffButton->setFlat(headphonesEnabled__);
-        ui__->headersOnOffButton->setIcon(headphonesEnabled__ ? QIcon(":/icons/headers.png") : QIcon(":/icons/headersOff.png"));
-    }
-}
-
-void ClientMain::on_headersOnOffButton_clicked()
-{
-    headphonesEnabled__ = !headphonesEnabled__;
-    //systemManager__ -> onOffHeadphones(headphonesEnabled__);
-    ui__->headersOnOffButton->setFlat(headphonesEnabled__);
-    ui__->headersOnOffButton->setIcon(headphonesEnabled__ ? QIcon(":/icons/headers.png") : QIcon(":/icons/headersOff.png"));
-
-    if (!headphonesEnabled__ && micEnabled__)
-    {
-        micEnabled__ = false;
-    //    systemManager__ -> onOffMicrophone(micEnabled__);
-        ui__->micOnOffButton->setFlat(micEnabled__);
-        ui__->micOnOffButton->setIcon(micEnabled__ ? QIcon(":/icons/mic.png") : QIcon(":/icons/micOff.png"));
-    }
-    if (headphonesEnabled__ && !micEnabled__)
-    {
-        micEnabled__ = true;
-    //    systemManager__ -> onOffMicrophone(micEnabled__);
-        ui__->micOnOffButton->setFlat(micEnabled__);
-        ui__->micOnOffButton->setIcon(micEnabled__ ? QIcon(":/icons/mic.png") : QIcon(":/icons/micOff.png"));
-    }
 }
 
 void ClientMain::handleConnectionFailed()
@@ -439,6 +457,7 @@ void ClientMain::on_addFriendRequest(const int id_, const QString &username_)
 
     QLabel *label = new QLabel(username_, container);
     QPushButton *acceptButton = new QPushButton("Принять", container);
+    QPushButton *rejectButton = new QPushButton("Отклонить", container);
 
     connect(acceptButton, &QPushButton::clicked, this, [=]()
     {
@@ -454,6 +473,8 @@ void ClientMain::on_addFriendRequest(const int id_, const QString &username_)
     layout->addWidget(label);
     layout->addStretch();
     layout->addWidget(acceptButton);
+    layout->addWidget(rejectButton);
+
 
     QVBoxLayout *scrollLayout = qobject_cast<QVBoxLayout *>(ui__->friendRequestsScrlAreaContents->layout());
 

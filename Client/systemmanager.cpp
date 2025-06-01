@@ -1,6 +1,8 @@
 #include "systemmanager.h"
 #include "../possible_requests.h"
 
+#include <gst/video/videooverlay.h>
+
 // Класс Participant
 UserProfile::UserProfile(int id_, QString login_, UserState status_, FriendShipState friendshipState_) :
     id__(id_),
@@ -314,15 +316,29 @@ Server::Server(int id_,
     QWidget *createTextChannelTab = new QWidget();
     textTabWidget->addTab(createTextChannelTab, "+");
 
-    mainLayout->addWidget(voiceTabWidget);
-    mainLayout->addWidget(textTabWidget);
+    QSplitter *splitter = new QSplitter(Qt::Horizontal);
+
+    splitter->addWidget(voiceTabWidget);
+    splitter->addWidget(textTabWidget);
 
     // Участники
     auto *participantsGroup = createParticipantsGroup();
-    mainLayout->addWidget(participantsGroup);
+    splitter->addWidget(participantsGroup);
 
-
+    mainLayout->addWidget(splitter);
     mainWidget__->setLayout(mainLayout);
+}
+
+QMap<int, Channel *> Server::voiceChannels()
+{
+    QMap<int, Channel *> voiceChannels;
+    for (auto &channel : channels__)
+    {
+        if(channel->isVoice())
+            voiceChannels.insert(channel->getID(), channel);
+    }
+
+    return voiceChannels;
 }
 
 void Server::participantAdd(UserProfile *user_)
@@ -446,24 +462,84 @@ void Channel::setLastMessage(const QString &sender_name_,
     messagesLayout__->addWidget(messageHandler);
 }
 
+void Channel::addUserToVoice(UserProfile *user_)
+{
+    if(!is_voice__)
+        return;
+
+    if (voiceUsers.contains(user_->getId()))
+        return;
+
+    QPushButton *user = new QPushButton(user_->getLogin());
+    connect(user, &QPushButton::clicked, this, [=](){
+        emit connectToVideoChat(id__, user_->getId());
+    });
+    user->setFlat(true);
+    voiceUsersLayout__->addWidget(user);
+
+
+    voiceUsers.insert(user_->getId(), user);
+}
+
 void Channel::createVoiceChannel()
 {
-    QGridLayout* layout = new QGridLayout();
+
+    QVBoxLayout* layout = new QVBoxLayout();
+    voiceUsersLayout__ = new QVBoxLayout();
+    voiceUsersLayout__ ->addWidget(new QLabel("Участники:"));
 
     QLabel* titleLabel = new QLabel(name__);
     titleLabel->setStyleSheet("font-weight: bold; font-size: 16px;");
-    layout->addWidget(titleLabel, 0, 0, 1, 2);
+    layout->addWidget(titleLabel);
+    layout->addLayout(voiceUsersLayout__);
+    layout->addSpacerItem(new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding));
 
     QPushButton* connectButton = new QPushButton("Подключиться");
     QPushButton* disconnectButton = new QPushButton("Отключиться");
+    QPushButton *shareVideo = new QPushButton("Начать трансляцию");
+    disconnectButton->setEnabled(false);
     QPushButton* micButton = new QPushButton();
+    QPushButton* headersButton = new QPushButton();
+
+    connectButton->setMaximumSize(QSize(300, 300));
+    connect(connectButton, &QPushButton::clicked, this, [=](){
+        emit connectToVoiceChannel(id__);
+        connectButton->setEnabled(false);
+        disconnectButton->setEnabled(true);
+
+        shareVideo->setEnabled(true);
+        shareVideo->setVisible(true);
+    });
+
+    disconnectButton->setMaximumSize(QSize(300, 300));
+    connect(disconnectButton, &QPushButton::clicked, this, [=](){
+        emit disconnectFromVoiceChannel(id__);
+        connectButton->setEnabled(true);
+        disconnectButton->setEnabled(false);
+        shareVideo->setVisible(false);
+        shareVideo->setEnabled(false);
+    });
+
     micButton->setIcon(QIcon(":/icons/mic.png"));
+    headersButton->setIcon(QIcon(":/icons/headers.png"));
 
-    layout->addWidget(connectButton, 1, 0);
-    layout->addWidget(disconnectButton, 2, 0);
-    layout->addWidget(micButton, 1, 1);
+    micButton->setMaximumSize(QSize(30, 30));
+    headersButton->setMaximumSize(QSize(30, 30));
 
+    connect(shareVideo, &QPushButton::clicked, this, [=](){
+        emit startVideoChat(id__);
+        shareVideo->setEnabled(false);
+    });
+    shareVideo->setVisible(false);
 
+    QGridLayout *buttonsLayout = new QGridLayout();
+    buttonsLayout->addWidget(connectButton, 0, 0);
+    buttonsLayout->addWidget(disconnectButton, 1, 0);
+    buttonsLayout->addWidget(micButton, 0, 1);
+    buttonsLayout->addWidget(headersButton, 1, 1);
+    buttonsLayout->addWidget(shareVideo, 2, 0, 1, 2);
+
+    layout->addLayout(buttonsLayout);
     mainWidget__->setLayout(layout);
 }
 
@@ -659,11 +735,13 @@ Message::Message(int id_, const QString &type_, const QString &authorName_, QStr
     QWidget *senderAndTimeWidget = new QWidget();
     QHBoxLayout *senderAndTimeLayout = new QHBoxLayout(senderAndTimeWidget);
     QLabel *sender = new QLabel(authorName_);
-    QLabel *content = new QLabel(content_);
+    QTextBrowser *content = new QTextBrowser();
     QLabel *dateTime = new QLabel(dateTime_);
     sender->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    sender->setStyleSheet("font-weight: bold;");
     dateTime->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    content->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    content->setText(content_);
+    content->setFrameStyle(QFrame::NoFrame);
 
     senderAndTimeLayout->addWidget(sender);
     senderAndTimeLayout->addWidget(dateTime);
@@ -671,4 +749,170 @@ Message::Message(int id_, const QString &type_, const QString &authorName_, QStr
 
     mainLayout->addWidget(senderAndTimeWidget);
     mainLayout->addWidget(content);
+}
+
+VideoChatWindow::VideoChatWindow()
+{
+    gst_init(nullptr, nullptr);
+
+    videosHandler = new QSplitter(Qt::Horizontal);
+    QHBoxLayout *layout = new QHBoxLayout();
+    layout->addWidget(videosHandler);
+
+    setLayout(layout);
+}
+
+VideoChatWindow::~VideoChatWindow()
+{
+    // for (auto &pipeline : videoWidgets__)
+    // {
+    //     gst_element_set_state(pipeline.first, GST_STATE_NULL);
+    //     gst_object_unref(pipeline.first);
+    //     pipeline.first = nullptr;
+    // }
+}
+
+void VideoChatWindow::startVideo(const QString &ip_, const QString &port_)
+{
+    int port = port_.toInt();
+    int bitrate = 8000;
+    QString speedPreset = "superfast";
+    // int cropLeft = 1920;
+
+    GstElement* pipeline = gst_element_factory_make("fakesrc", nullptr);
+    QVBoxLayout *videoLayout = new QVBoxLayout();
+    QWidget *videoWidget = new QWidget();
+    QWidget *videoPlayer = new QWidget();
+    videoPlayer->setMinimumSize(360, 140);
+    videoWidget->setLayout(videoLayout);
+    QLabel *nameLabel = new QLabel("Ваша трансляция");
+    nameLabel->setMaximumHeight(20);
+    videoLayout->addWidget(nameLabel);
+    videoLayout->addWidget(videoPlayer);
+
+    videoWidgets__.insert(0, {QSharedPointer<GstElement>(pipeline, &gst_object_unref), videoPlayer});
+
+    QString pipelineStr;
+    pipelineStr = QString(
+                      "ximagesrc use-damage=0 ! "
+                      "videoconvert ! "
+                      "tee name=t ! "
+                      "queue ! videoconvert ! glimagesink "
+                      "t. ! queue ! x264enc tune=zerolatency bitrate=%1 speed-preset=%2 ! "
+                      "rtph264pay config-interval=1 pt=96 ! "
+                      "udpsink host=%3 port=%4"
+                      ).arg(bitrate).arg(speedPreset).arg(ip_).arg(port);
+
+    QByteArray pipelineBytes = pipelineStr.toLocal8Bit();
+    const char *pipelineDesc = pipelineBytes.constData();
+
+    GError *error = nullptr;
+    pipeline = gst_parse_launch(pipelineDesc, &error);
+    if (!pipeline) {
+        qDebug() << "Failed to create pipeline: " << error->message;
+        g_error_free(error);
+        return;
+    }
+
+    // Привязываем виджет к sink для отображения видео
+    GstElement *sink = gst_bin_get_by_interface(GST_BIN(pipeline), GST_TYPE_VIDEO_OVERLAY);
+    if (sink) {
+        WId winId = videoWidgets__[0].second->winId();
+        gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(sink), winId);
+
+// #if defined(Q_OS_WIN)
+//         gst_video_overlay_set_render_rectangle(GST_VIDEO_OVERLAY(sink),
+//                                                0, 0,
+//                                                screens__[0]->width(),
+//                                                screens__[0]->height());
+// #endif
+
+        gst_object_unref(sink);
+    }
+    videosHandler->addWidget(videoWidget);
+
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+}
+
+void VideoChatWindow::addVideo(int id_, const QString &name_, const QString &ip_, const QString &port)
+{
+    GstElement* pipeline = gst_element_factory_make("fakesrc", nullptr);
+    QVBoxLayout *videoLayout = new QVBoxLayout();
+    QWidget *videoWidget = new QWidget();
+    QWidget *videoPlayer = new QWidget();
+    videoPlayer->setMinimumSize(360, 140);
+    videoWidget->setLayout(videoLayout);
+    QLabel *nameLabel = new QLabel("Трансляция " + name_);
+    nameLabel->setMaximumHeight(20);
+    videoLayout->addWidget(nameLabel);
+    videoLayout->addWidget(videoPlayer);
+
+    videoWidgets__.insert(0, {QSharedPointer<GstElement>(pipeline, &gst_object_unref), videoPlayer});
+    videosHandler->addWidget(videoWidget);
+
+    // Здесь адрес UDP потока — поменяйте при необходимости
+    std::string pipeline_desc;
+    // if (isWayland())
+    // {
+        // pipeline_desc =
+        //     "udpsrc port=5002 caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96\" ! "
+        //     "rtph264depay ! avdec_h264 ! videoconvert ! gtksink name=sink";
+    // }
+    // else
+    // {
+        pipeline_desc =
+            "udpsrc port=5002 caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96\" ! "
+            "rtph264depay ! avdec_h264 ! videoconvert ! glimagesink name=sink";
+//    }
+
+    pipeline = gst_parse_launch(pipeline_desc.c_str(), nullptr);
+    if (!pipeline) {
+        qDebug() << "Failed to create GStreamer pipeline";
+        return;
+    }
+
+    GstElement *sink = gst_bin_get_by_name(GST_BIN(pipeline), "sink");
+    if (!sink) {
+        qDebug() << "Failed to get sink element from pipeline";
+        gst_object_unref(pipeline);
+        pipeline = nullptr;
+        return;
+    }
+
+    WId win_id = videoPlayer->winId();
+    gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(sink), (guintptr)win_id);
+
+    gst_object_unref(sink);
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+}
+
+void VideoChatWindow::removeVideo(int id_)
+{
+    auto it = videoWidgets__.find(id_);
+    if (it != videoWidgets__.end()) {
+        GstElement* element = it.value().first.data();
+
+        if (element) {
+            gst_element_set_state(element, GST_STATE_NULL);
+        }
+
+        it.value().first.clear();
+        it.value().second->deleteLater();
+
+        videoWidgets__.erase(it);
+    }
+    while (videosHandler->count() > 0) {
+        QWidget* widget = videosHandler->widget(0);
+        if (widget) {
+            widget->setParent(nullptr);
+            delete widget;
+        }
+    }
+}
+void VideoChatWindow::closeEvent(QCloseEvent *event)
+{
+    for (int id : videoWidgets__.keys())
+        removeVideo(id);
+    event->accept();
 }
