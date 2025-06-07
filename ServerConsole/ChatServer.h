@@ -9,9 +9,34 @@
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
+
+
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
+
+enum UserState
+{
+    InGame = 0,
+    Online = 1,
+    Offline = 2
+};
+
+enum FriendShipState
+{
+    NotFriends = -1,
+    Waiting = 0,
+    Accepted = 1,
+    Blocked = 2,
+    Chat = 3
+};
+
+struct User
+{
+    QString name;
+    int id;
+};
 
 class ChatServer : public QObject {
     Q_OBJECT
@@ -34,13 +59,25 @@ signals:
 private:
     QSqlDatabase *db__;
     QWebSocketServer *webSocketServer;
-    QSet<QWebSocket *> clientsWebSocket;
+    QMap<QWebSocket *, int> clientsWebSocket;
     QUdpSocket *udpSocket;
     QHash<QString, QPair<QHostAddress, quint16>> clientsUDP;
+    QMap<int, QList<User>> voiceChannels__;
 
     void parseJson(QJsonObject &messageJson_);
-    void broadcastMessage(const QJsonObject &message, QWebSocket *excludeSocket = nullptr);
+    void broadcastMessage(const QJsonObject &message, QSet<int> user_ids_to_send_);
     void broadcastAudio(const QByteArray &audioData, const QHostAddress &excludeAddress, quint16 excludePort);
+    QJsonObject generateResponse(bool is_positive, const QJsonObject &response_params);
+    QJsonObject generateResponse(bool is_positive_, const QString requestType_, const QJsonObject &response_params_);
+    bool insertChannel(int server_id, int owner_id, const QString& name, bool is_voice, QJsonArray& channels_info);
+    bool insertTextMessage(int sender_id, QString &userName, int channel_id, const QString& message_type, QString& content, QString &created_at, QJsonObject &msgHandler);
+    bool insertInviteMessage(int sender_id, QString &userName, int channel_id, const QString& message_type, int inv_id_, QString& server_name_, QString &created_at, QJsonObject &msgHandler);
+    QJsonObject messageToJson(const QString &userName_,
+                              const QString &content_,
+                              const QString &timestamp_);
+    QJsonObject messageToJson(const QString &userName_,
+                              const QJsonObject &content_,
+                              const QString &timestamp_);
 };
 
 #endif // CHATSERVER_H

@@ -13,8 +13,38 @@
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="4" column="0" colspan="2">
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="0" colspan="2">
+    <widget class="QPushButton" name="cancelBtn">
+     <property name="focusPolicy">
+      <enum>Qt::NoFocus</enum>
+     </property>
+     <property name="text">
+      <string>Отмена</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QLineEdit" name="passCheck">
+     <property name="text">
+      <string>qwerty1</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="placeholderText">
+      <string>Пароль...</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
       <string>ТЫ КТО</string>
@@ -24,33 +54,7 @@
      </property>
     </widget>
    </item>
-   <item>
-    <widget class="QLineEdit" name="loginCheck">
-     <property name="inputMask">
-      <string/>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-     <property name="placeholderText">
-      <string>Логин...</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLineEdit" name="passCheck">
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-     <property name="placeholderText">
-      <string>Пароль...</string>
-     </property>
-    </widget>
-   </item>
-   <item>
+   <item row="3" column="0" colspan="2">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -63,40 +67,29 @@
      </property>
     </spacer>
    </item>
-   <item>
-    <widget class="Line" name="line">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+   <item row="1" column="0" colspan="2">
+    <widget class="QLineEdit" name="loginCheck">
+     <property name="inputMask">
+      <string/>
+     </property>
+     <property name="text">
+      <string>user1</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="placeholderText">
+      <string>Логин...</string>
      </property>
     </widget>
    </item>
-   <item>
+   <item row="5" column="0" colspan="2">
     <widget class="QPushButton" name="connectBtn">
      <property name="focusPolicy">
       <enum>Qt::TabFocus</enum>
      </property>
      <property name="text">
       <string>Вход</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="connectBtn_2">
-     <property name="focusPolicy">
-      <enum>Qt::TabFocus</enum>
-     </property>
-     <property name="text">
-      <string>Автономный режим</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="cancelBtn">
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Отмена</string>
      </property>
     </widget>
    </item>

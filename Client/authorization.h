@@ -18,7 +18,8 @@ class Authorization : public QDialog
     Q_OBJECT
 
 public:
-    explicit Authorization(SystemManager*& systemManager_, QWidget *parent = nullptr);
+    explicit Authorization(NetworkManager* networkManager_, QWidget *parent = nullptr);
+    const UserData getUserData() { return userData__; };
     ~Authorization();
 
 private slots:
@@ -29,11 +30,11 @@ private slots:
 private:
 
     void showWarningMessage(const QString &message_);
-    void authFinished(QString error_);
-    void disableFieldsOnAuthProcess(bool);
+    void authFinished(const QJsonObject &userData);
+    void enableFieldsOnAuthProcess(bool);
 
-
-    SystemManager                               *&systemManager__;
+    UserData                               userData__;
+    NetworkManager                              *networkManager__;
 
     Ui::Authorization                           *ui__;
 };
