@@ -2,6 +2,8 @@
 #include "./ui_clientmain.h"
 #include "../possible_requests.h"
 
+#include <QShortcut>
+
 const QString programmName = "Collab Space";
 
 // Класс ClientMain
@@ -10,6 +12,13 @@ ClientMain::ClientMain(QWidget *parent)
     ui__(new Ui::ClientMain)
 {
     ui__->setupUi(this);
+
+    QShortcut *shortcutZoomIn = new QShortcut(QKeySequence("Ctrl+="), this);
+    connect(shortcutZoomIn, &QShortcut::activated, this, &ClientMain::zoomIn);
+
+    QShortcut *shortcutZoomOut = new QShortcut(QKeySequence("Ctrl+-"), this);
+    connect(shortcutZoomOut, &QShortcut::activated, this, &ClientMain::zoomOut);
+
     videoChatWindow__ = new VideoChatWindow();
 
     ui__->voiceDisconnectButton->setVisible(false);
@@ -78,6 +87,23 @@ ClientMain::~ClientMain()
 {
     logOut();
     delete ui__;
+}
+
+void ClientMain::zoomIn()
+{
+    QFont font = this->font();
+    int size = font.pointSize();
+    font.setPointSize(size + 1);
+    this->setFont(font);
+}
+
+void ClientMain::zoomOut()
+{
+    QFont font = this->font();
+    int size = font.pointSize();
+    if (size > 6)
+        font.setPointSize(size - 1);
+    this->setFont(font);
 }
 
 void ClientMain::startVoiceChat()

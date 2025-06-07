@@ -747,12 +747,16 @@ Message::Message(int id_, const QString &type_, const QString &authorName_, cons
     QWidget *senderAndTimeWidget = new QWidget();
     QHBoxLayout *senderAndTimeLayout = new QHBoxLayout(senderAndTimeWidget);
     QLabel *sender = new QLabel(authorName_);
+
+    QFont font = this->font();
+    font.setBold(true);
+    sender->setFont(font);
+
     QLabel *dateTime = new QLabel(dateTime_);
     senderAndTimeLayout->addWidget(sender);
     senderAndTimeLayout->addWidget(dateTime);
     senderAndTimeLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum));
     sender->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    sender->setStyleSheet("font-weight: bold;");
     dateTime->setTextInteractionFlags(Qt::TextBrowserInteraction);
 
     mainLayout->addWidget(senderAndTimeWidget);
@@ -769,7 +773,7 @@ Message::Message(int id_, const QString &type_, const QString &authorName_, cons
         inviteHandler->setLayout(new QHBoxLayout());
         QPushButton *acceptInvite = new QPushButton("Принять");
         QLabel *serverName = new QLabel(content_["server_name"].toString());
-        serverName->setStyleSheet("font-weight: bold;");
+        serverName->setFont(font);
         inviteHandler->layout()->addWidget(new QLabel("Приглашение на сервер:"));
         inviteHandler->layout()->addWidget(serverName);
         inviteHandler->layout()->addWidget(acceptInvite);

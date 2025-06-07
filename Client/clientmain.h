@@ -31,6 +31,8 @@ public:
     ~ClientMain();
 
 private slots:
+    void zoomIn();
+    void zoomOut();
     void handleTextMessageReceived(int server_id,
                                    int channel_id,
                                    int msg_id,
