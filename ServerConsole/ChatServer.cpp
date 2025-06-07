@@ -59,6 +59,18 @@ QJsonObject ChatServer::messageToJson (const QString &userName_,
     return message;
 }
 
+QJsonObject ChatServer::messageToJson(const QString &userName_,
+                                      const QJsonObject &content_,
+                                      const QString &timestamp_)
+{
+    QJsonObject message;
+    message["user_name"] = userName_;
+    message["content"] = content_;
+    message["timestamp"] = timestamp_;
+
+    return message;
+}
+
 void ChatServer::handleWebSocketMessage(const QString &message)
 {
     QWebSocket *senderSocket = qobject_cast<QWebSocket *>(sender());
@@ -83,8 +95,25 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         auto message_type = messageJson.value(TYPE).toString();
         int channel_id = messageJson.value("channel_id").toInt();
         int sender_id = messageJson.value("user_id").toInt();
-        QString content = messageJson.value("content").toString();
         int server_id = -1;
+        if (channel_id <= 0)
+        {
+            query.clear();
+            query.prepare(R"(
+                SELECT channels.id
+                FROM compadres
+                JOIN channels ON compadres_id = compadres.id
+                WHERE (user1_id = 1 AND user2_id = 2) OR
+                      (user1_id = 2 AND user2_id = 1)
+            )");
+            int target_id = messageJson["target_id"].toInt();
+
+            query.bindValue(":sender_id", sender_id);
+            query.bindValue(":target_id", target_id);
+            query.exec();
+            if (query.next())
+                channel_id = query.value(0).toInt();
+        }
 
         query.clear();
         query.prepare(R"(
@@ -126,35 +155,40 @@ void ChatServer::handleWebSocketMessage(const QString &message)
                 user_ids_to_send.insert(query.value("user_id").toInt());
             }
         }
-        if (message_type == TEXT)
+        QSqlQuery query;
+        query.prepare("SELECT login FROM Users WHERE id = :sender_id");
+        query.bindValue(":sender_id", sender_id);
+
+        messageJsonToSend = {
+            {REQUEST, MESSAGE},
+            {"server_id", server_id},
+            {"channel_id", channel_id}
+        };
+
+        QJsonObject msg;
+        if (query.exec() && query.next())
         {
-            QSqlQuery query;
-            query.prepare("SELECT login FROM Users WHERE id = :sender_id");
-            query.bindValue(":sender_id", sender_id);
-
-            messageJsonToSend = {
-                {REQUEST, MESSAGE},
-                {TYPE, TEXT},
-                {"server_id", server_id},
-                {"channel_id", channel_id}
-            };
-
-            QJsonObject msg;
-            if (query.exec() && query.next())
+            QString userName = query.value(0).toString();
+            QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODate);
+            if (message_type == TEXT)
             {
-                QString userName = query.value(0).toString();
-                QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODate);
-                insertMessage(sender_id, userName, channel_id, message_type, content, timestamp, msg);
+                QString content = messageJson.value("content").toString();
+                insertTextMessage(sender_id, userName, channel_id, message_type, content, timestamp, msg);
             }
-            else
-                qWarning() << "User not found for ID:" << sender_id;
-
-            messageJsonToSend["message"] = msg;
+            else if (message_type == INVITE)
+            {
+                msg.insert(TYPE, INVITE);
+                // qDebug() << sender_id << userName << channel_id << message_type << messageJson["invite_id"].toInt() << messageJson["serverName"].toString();
+                QString serverName = messageJson["serverName"].toString();
+                insertInviteMessage(sender_id, userName, channel_id, message_type,
+                                    messageJson["invite_id"].toInt(), serverName, timestamp, msg);
+            }
         }
         else
-        {
-            qWarning() << "Invalid message type:" << message_type;
-        }
+            qWarning() << "User not found for ID:" << sender_id;
+
+        messageJsonToSend["message"] = msg;
+        qDebug() << messageJsonToSend;
     }
     else if(request_type == LOGIN_USER)
     {
@@ -351,13 +385,24 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         QJsonObject response_params;
         while(query.next())
         {
-            if (query.value("uses_left").toInt())
+            if (query.value("uses_left").toString().isEmpty())
             {
+                //return;
                 // Вычесть 1 и что-нибудь сделать
+            }
+            else
+            {
+                int uses_left = query.value("uses_left").toInt() - 1;
+                query.clear();
+                query.prepare("UPDATE invite_to_server"
+                              "SET uses_left = :uses_left "
+                              "WHERE id = :invite_id;");
+                query.bindValue(":uses_left", uses_left);
+                query.bindValue(":invite_id", invite_id);
+                query.exec();
             }
         }
         query.clear();
-
         query.prepare(
             "INSERT INTO Server_User_relation (user_id, server_id, role_id) "
             "SELECT "
@@ -514,14 +559,28 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         while (query.next())
         {
             QJsonObject msg;
-            int message_id= query.value("message_id").toInt();
+            int message_id = query.value("message_id").toInt();
             QString type = query.value("type").toString();
             QString authorName = query.value("sender_name").toString();
-            QString content = query.value("content").toString();
+
+            QJsonObject contentObj;
+            QVariant contentVariant = query.value("content");
+            if (!contentVariant.isNull()) {
+                QString jsonStr = contentVariant.toString();
+                QJsonParseError parseError;
+                QJsonDocument contentDoc = QJsonDocument::fromJson(jsonStr.toUtf8(), &parseError);
+                if (parseError.error == QJsonParseError::NoError && contentDoc.isObject()) {
+                    contentObj = contentDoc.object();
+                } else {
+                    qWarning() << "Ошибка парсинга поля content:" << parseError.errorString();
+                    qWarning() << "Исходная строка content:" << jsonStr;
+                }
+            }
+
             QString timestamp = query.value("created_at").toString();
             bool is_edited = query.value("is_edited").toBool();
 
-            msg = messageToJson(authorName, content, timestamp);
+            msg = messageToJson(authorName, contentObj, timestamp);
             msg["type"] = type;
             msg["is_edited"] = is_edited;
 
@@ -661,37 +720,69 @@ void ChatServer::handleWebSocketMessage(const QString &message)
 
         messageJsonToSend = generateResponse(true, GET_FRIEND_REQUESTS, response);
     }
-    else if(request_type == GET_FRIEND_LIST)
+    else if (request_type == GET_FRIEND_LIST)
     {
         int user_id = messageJson.value("user_id").toInt();
 
         user_ids_to_send.insert(user_id);
 
         QSqlQuery query;
-        query.clear();
         query.prepare(R"(
-            SELECT u.id AS user_id, u.login AS user_login, u.status AS user_status
-            FROM users u
-            JOIN compadres c
-                ON (
-                    (c.user1_id = :user_id AND c.user2_id = u.id) OR
-                    (c.user2_id = :user_id AND c.user1_id = u.id)
-                )
-            WHERE c.status = :status;
-        )");
+        SELECT
+            u.id AS user_id,
+            u.login AS user_login,
+            u.status AS user_status,
+            json_agg(json_build_object('id', s.id, 'name', s.name))
+                FILTER (WHERE s.id IS NOT NULL) AS common_servers
+        FROM users u
+        JOIN compadres c ON (
+            (c.user1_id = :user_id AND c.user2_id = u.id)
+            OR
+            (c.user2_id = :user_id AND c.user1_id = u.id)
+        )
+        LEFT JOIN (
+            SELECT sur1.user_id AS user1_id, sur1.server_id
+            FROM Server_User_relation sur1
+            JOIN Server_User_relation sur2
+                ON sur1.server_id = sur2.server_id
+            WHERE sur2.user_id = :user_id
+        ) common ON common.user1_id = u.id
+        LEFT JOIN Servers s ON s.id = common.server_id
+        WHERE c.status = :status
+        GROUP BY u.id, u.login, u.status;
+    )");
+
         query.bindValue(":user_id", user_id);
         query.bindValue(":status", FriendShipState::Accepted);
-        query.exec();
 
         QJsonObject response_params;
-        while(query.next())
+        if (query.exec())
         {
-            QJsonObject user_info{
-                {"user_login", query.value("user_login").toString()},
-                {"user_status", query.value("user_status").toInt()}
-            };
-            response_params.insert(query.value("user_id").toString(), user_info);
+            while (query.next())
+            {
+                QJsonObject user_info{
+                    {"user_login", query.value("user_login").toString()},
+                    {"user_status", query.value("user_status").toInt()}
+                };
+
+                QJsonArray commonServers;
+                QVariant commonServersVariant = query.value("common_servers");
+                if (!commonServersVariant.isNull())
+                {
+                    QString jsonStr = commonServersVariant.toString();
+                    QJsonParseError parseError;
+                    QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8(), &parseError);
+                    if (parseError.error == QJsonParseError::NoError && doc.isArray())
+                    {
+                        commonServers = doc.array();
+                    }
+                }
+
+                user_info.insert("common_servers", commonServers);
+                response_params.insert(query.value("user_id").toString(), user_info);
+            }
         }
+
         QJsonObject response{
             {"friend_list", response_params}
         };
@@ -974,7 +1065,7 @@ void ChatServer::handleWebSocketMessage(const QString &message)
 
                 if (!new_channel_id.isNull())
                 {
-                    insertMessage(author_id, author_login, new_channel_id.toInt(), TEXT, message, timestamp, msg);
+                    insertTextMessage(author_id, author_login, new_channel_id.toInt(), TEXT, message, timestamp, msg);
                     QJsonObject response_params;
                     QJsonObject user_info{
                         {"user_id", target_id},
@@ -996,7 +1087,7 @@ void ChatServer::handleWebSocketMessage(const QString &message)
                         {"server_id", 0},
                         {"channel_id", existing_channel_id.toInt()}
                     };
-                    insertMessage(author_id, author_login, existing_channel_id.toInt(), TEXT, message, timestamp, msg);
+                    insertTextMessage(author_id, author_login, existing_channel_id.toInt(), TEXT, message, timestamp, msg);
 
                     messageJsonToSend["message"] = msg;
                 }
@@ -1037,6 +1128,83 @@ void ChatServer::handleWebSocketMessage(const QString &message)
         }
         return;
     }
+    else if (request_type == GET_SERVER_SETTINGS)
+    {
+        int server_id = messageJson["server_id"].toInt();
+        int user_id = messageJson["user_id"].toInt();
+        user_ids_to_send.insert(user_id);
+        QSqlQuery query;
+        query.prepare(R"(
+            SELECT
+                i.id AS invite_id,
+                i.roles_id AS role_id,
+                i.author_id AS invite_author_id,
+                i.URL AS invite_url,
+                i.uses_left AS invite_uses_left,
+                i.created_at AS invite_created_at,
+                i.exprired_at AS invite_expired_at,
+
+                r.name AS role_name,
+                r.is_highest_permission AS role_is_highest,
+                r.user_permissions AS role_user_permissions,
+                r.admin_permissions AS role_admin_permissions,
+
+                s.id AS server_id,
+                s.invite_default_id AS server_invite_default_id,
+                s.name AS server_name,
+                s.description AS server_description
+
+            FROM
+                invite_to_server i
+            JOIN
+                Roles r ON i.roles_id = r.id
+            JOIN
+                Servers s ON r.server_id = s.id
+            WHERE
+                s.id = :server_id
+        )");
+
+        query.bindValue(":server_id", server_id);
+        query.exec();
+
+        QJsonObject invitesArray;
+
+        while (query.next()) {
+            QJsonObject inviteObject;
+
+            inviteObject["invite_id"]        = query.value("invite_id").toInt();
+            inviteObject["role_id"]          = query.value("role_id").toInt();
+            inviteObject["invite_author_id"] = query.value("invite_author_id").toInt();
+            inviteObject["invite_url"]       = query.value("invite_url").toString();
+            inviteObject["invite_uses_left"] = query.value("invite_uses_left").isNull()
+                                                   ? QJsonValue::Null
+                                                   : QJsonValue(query.value("invite_uses_left").toInt());
+
+            inviteObject["invite_created_at"] = query.value("invite_created_at").toDateTime().toString(Qt::ISODateWithMs);
+            inviteObject["invite_expired_at"] = query.value("invite_expired_at").isNull()
+                                                    ? QJsonValue::Null
+                                                    : QJsonValue(query.value("invite_expired_at").toDateTime().toString(Qt::ISODateWithMs));
+
+            inviteObject["role_name"]              = query.value("role_name").toString();
+            inviteObject["role_is_highest"]        = query.value("role_is_highest").toBool();
+            inviteObject["role_user_permissions"]  = query.value("role_user_permissions").toInt();
+            inviteObject["role_admin_permissions"] = query.value("role_admin_permissions").toInt();
+
+            inviteObject["server_id"]                = query.value("server_id").toInt();
+            inviteObject["server_invite_default_id"] = query.value("server_invite_default_id").isNull()
+                                                           ? QJsonValue::Null
+                                                           : QJsonValue(query.value("server_invite_default_id").toInt());
+            inviteObject["server_name"]              = query.value("server_name").toString();
+            inviteObject["server_description"]       = query.value("server_description").toString();
+
+            invitesArray[QString::number(query.value("invite_id").toInt())] = inviteObject;
+        }
+
+        QJsonObject result;
+        result["invites"] = invitesArray;
+
+        messageJsonToSend = generateResponse(true, GET_SERVER_SETTINGS, result);
+    }
 
     broadcastMessage(messageJsonToSend, user_ids_to_send);
 }
@@ -1068,28 +1236,65 @@ bool ChatServer::insertChannel(int server_id, int owner_id, const QString& name,
     }
 }
 
-bool ChatServer::insertMessage(int sender_id, QString &userName, int channel_id, const QString &message_type, QString &content, QString &created_at, QJsonObject &msgHandler)
+bool ChatServer::insertTextMessage(int sender_id, QString &userName, int channel_id, const QString &message_type, QString &content, QString &created_at, QJsonObject &msgHandler)
 {
     QSqlQuery insertQuery;
+
+    // Подготовка JSON для content
+    QJsonObject contentObj;
+    contentObj["text"] = content; // Вставка текста под ключом "text"
+    QString jsonContent = QJsonDocument(contentObj).toJson(QJsonDocument::Compact);
+
     insertQuery.prepare("INSERT INTO Message (author_id, channel_id, type, content, created_at) "
                         "VALUES (:author_id, :channel_id, :type, :content, :created_at) "
                         "RETURNING id");
     insertQuery.bindValue(":author_id", sender_id);
     insertQuery.bindValue(":channel_id", channel_id);
     insertQuery.bindValue(":type", message_type);
-    insertQuery.bindValue(":content", content);
+    insertQuery.bindValue(":content", jsonContent);
     insertQuery.bindValue(":created_at", created_at);
 
-    if (insertQuery.exec() && insertQuery.next()){
-        int msg_id= insertQuery.value(0).toInt();
-        msgHandler[QString::number(msg_id)] = messageToJson(userName, content, created_at);
+    if (insertQuery.exec() && insertQuery.next()) {
+        int msg_id = insertQuery.value(0).toInt();
+        QJsonObject msg = messageToJson(userName, contentObj, created_at);
+        msg[TYPE] = message_type;
+        msgHandler[QString::number(msg_id)] = msg;
         return true;
-    }
-    else
+    } else {
         qWarning() << "Failed to insert message:" << insertQuery.lastError();
-    return false;
+        return false;
+    }
 }
 
+bool ChatServer::insertInviteMessage(int sender_id, QString &userName, int channel_id, const QString &message_type, int inv_id_, QString &server_name_, QString &created_at, QJsonObject &msgHandler)
+{
+    QSqlQuery insertQuery;
+
+    QJsonObject contentObj;
+    contentObj["invite_id"] = inv_id_;
+    contentObj["server_name"] = server_name_;
+    QString jsonContent = QJsonDocument(contentObj).toJson(QJsonDocument::Compact);
+
+    insertQuery.prepare("INSERT INTO Message (author_id, channel_id, type, content, created_at) "
+                        "VALUES (:author_id, :channel_id, :type, :content, :created_at) "
+                        "RETURNING id");
+    insertQuery.bindValue(":author_id", sender_id);
+    insertQuery.bindValue(":channel_id", channel_id);
+    insertQuery.bindValue(":type", message_type);
+    insertQuery.bindValue(":content", jsonContent);
+    insertQuery.bindValue(":created_at", created_at);
+
+    if (insertQuery.exec() && insertQuery.next()) {
+        int msg_id = insertQuery.value(0).toInt();
+        QJsonObject msg = messageToJson(userName, contentObj, created_at);
+        msg[TYPE] = message_type;
+        msgHandler[QString::number(msg_id)] = msg;
+        return true;
+    } else {
+        qWarning() << "Failed to insert message:" << insertQuery.lastError();
+        return false;
+    }
+}
 QJsonObject ChatServer::generateResponse(bool is_positive_, const QJsonObject &response_params_)
 {
     QJsonObject response{

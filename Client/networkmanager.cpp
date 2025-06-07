@@ -99,6 +99,7 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
     }
     else if (request_type == MESSAGE)
     {
+        qDebug() << messageJson_;
         int channel_id = messageJson_.value("channel_id").toInt();
         int server_id = messageJson_.value("server_id").toInt();
         QJsonObject messagesObj = messageJson_.value("message").toObject();
@@ -106,10 +107,11 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
         for (const QString &msg_id : messagesObj.keys()) {
             QJsonObject messageData = messagesObj.value(msg_id).toObject();
             QString userName = messageData.value("user_name").toString();
-            QString content = messageData.value("content").toString();
             QString timestamp = messageData.value("timestamp").toString();
+            QString type = messageData.value("type").toString();
+            QJsonObject contentObj = messageData["content"].toObject();
 
-            emit textMessageReceived(server_id, channel_id, userName, content, timestamp);
+            emit textMessageReceived(server_id, channel_id, msg_id.toInt(), type, userName, contentObj, timestamp);
         }
     }
     else if(request_type == GET_USER_SERVERS_LIST)
@@ -168,16 +170,19 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
                                 acceptFriendshipObj["user_login"].toString(),
                                 acceptFriendshipObj["user_status"].toInt());
     }
-    else if(request_type == GET_FRIEND_LIST)
+    else if (request_type == GET_FRIEND_LIST)
     {
         QJsonObject getFriendsObj = messageJson_["info"].toObject()["friend_list"].toObject();
         for (auto it = getFriendsObj.begin(); it != getFriendsObj.end(); ++it)
         {
             int key = it.key().toInt();
-            QString username = it.value().toObject()["user_login"].toString();
-            int user_status = it.value().toObject()["user_status"].toInt();
+            QJsonObject friendObj = it.value().toObject();
 
-            emit acceptedFriendship(key, username, user_status);
+            QString username = friendObj["user_login"].toString();
+            int user_status = friendObj["user_status"].toInt();
+
+            QJsonArray commonServers = friendObj["common_servers"].toArray();
+            emit acceptedFriendship(key, username, user_status, commonServers);
         }
     }
     else if(request_type == GET_PERSONAL_CHATS_LIST)
@@ -205,7 +210,18 @@ void NetworkManager::parseJson(QJsonObject &messageJson_)
                                    getBody["compadres_id"].toInt(),
                                    getBody["channel_id"].toInt());
     }
-}
+    else if (request_type == GET_SERVER_SETTINGS)
+    {
+        QJsonObject getBody = messageJson_["info"].toObject();
+
+        QJsonObject invitesObject = getBody["invites"].toObject();
+
+        for (const QString &inviteIdStr : invitesObject.keys())
+        {
+            const QJsonObject invData = invitesObject[inviteIdStr].toObject();
+            emit serverInviteData(invData);
+        }
+    }}
 
 
 void NetworkManager::setupAudioFormat()

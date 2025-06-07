@@ -70,6 +70,8 @@ public:
     UserProfile(int id_, QString login_, UserState status_, FriendShipState friendshipState);
     ~UserProfile() {};
 
+    void addSharedServer(int id_, QString& name) { sharedServers__.insert(id_, name);};
+    QMap<int, QString> getSharedServers() { return sharedServers__;};
     QWidget* getMainWidget() { return mainWidget__; };
     QString getLogin() {return login__;};
     UserState getState() {return state__;};
@@ -79,6 +81,8 @@ private:
     int id__;
     QByteArray img__;
     QString login__;
+    // Общие сервера с пользователем
+    QMap<int, QString> sharedServers__;
 
     QPushButton *addFriendBtn__;
     QPushButton *sendMsgBtn__;
@@ -157,6 +161,9 @@ public:
 private slots:
     void onTabContextMenuRequested(const QPoint& pos);
 
+signals:
+    void openSettings(int server_id, const QString &server_name_);
+
 private:
     void removeServerTab(int index);
 
@@ -171,7 +178,7 @@ public:
     Message(int id_,
             const QString &type_,
             const QString &authorName_,
-            QString &content_,
+            const QJsonObject &content_,
             const QString &dateTime_,
             QWidget *parent = nullptr);
     QWidget* getWidget() { return mainWidget__; };
@@ -194,8 +201,10 @@ public:
     QWidget *getWidget(){return mainWidget__;};
     int getID() {return id__;};
     int getMessagesCount();
-    void setLastMessage(const QString &sender_name_,
-                        QString &content_,
+    void setLastMessage(int id_,
+                        const QString &type,
+                        const QString &sender_name_,
+                        const QJsonObject &content_,
                         const QString &created_at);
     void addUserToVoice(UserProfile *user_);
     bool isVoice() { return is_voice__; };
@@ -215,6 +224,8 @@ private:
     QVBoxLayout                                 *voiceUsersLayout__;
 
     QMap<int, QPushButton*>                     voiceUsers;
+    QMap<int, Message*>                         messages;
+
     void createVoiceChannel();
     void createTextChannel();
 
@@ -235,6 +246,7 @@ public:
                          const QString &name_,
                          const QString &description_,
                          QByteArray img_);
+    int getId() { return id__; };
     QString getName() {return name__;};
     QWidget* getWidget() {return mainWidget__;};
     QPushButton* getJoinBtn() {return joinServerBtn__;};
@@ -256,7 +268,6 @@ signals:
                          const QString &description_);
     void acceptInvite(int id_);
 };
-
 
 class Server : public ShortServer
 {
@@ -292,7 +303,6 @@ private:
     int                                         admin_perm__;
     QMap<int, Channel*>                         channels__;
     QMap<int, QPushButton*>                     participants__;
-    QString                                     serverAdr__ = "0.0.0.0";
 
 
     QGroupBox *createParticipantsGroup();

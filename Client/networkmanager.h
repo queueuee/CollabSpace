@@ -9,6 +9,7 @@
 #include <QIODevice>
 #include <QAudioFormat>
 #include <QEventLoop>
+#include <QJsonArray>
 
 class NetworkManager : public QObject
 {
@@ -42,8 +43,10 @@ signals:
     void getAuthToken(const QJsonObject &loginData);
     void textMessageReceived(int server_id,
                              int channel_id,
+                             int msg_id,
+                             const QString &type,
                              const QString &userName,
-                             QString &content,
+                             const QJsonObject &content,
                              const QString &timestamp);
     void createServer(const QJsonObject &frame);
     void userServerListRecived(const QJsonObject &userServerList);
@@ -53,10 +56,11 @@ signals:
     void leaveServerAnswer(const QJsonObject &answer);
     void serverParticipantsList(const QJsonObject &answer);
     void updateUser(const QJsonObject &answer);
-    void acceptedFriendship(const int id, const QString &username, int userState);
+    void acceptedFriendship(const int id, const QString &username, int userState, const QJsonArray &commonServers = QJsonArray());
     void addFriendRequest(const int id, const QString &username);
     void personalChat(const int key, const QString &username, const int user_id, const int compadres_id);
     void addUserToVoiceChannel(const int user_id, const QString &username, const int server_id, const int compadres_id, const int channel_id);
+    void serverInviteData(const QJsonObject inviteData_);
 
 private slots:
     void sendAudio();

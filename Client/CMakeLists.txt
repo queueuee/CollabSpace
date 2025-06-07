@@ -38,6 +38,9 @@ add_executable(Client ${PROJECT_SOURCES}
     authorization.h authorization.cpp authorization.ui
     systemmanager.h systemmanager.cpp
     networkmanager.h networkmanager.cpp
+    serversettings.h serversettings.cpp serversettings.ui
+
+
 )
 
 # Привязка библиотек к целевой программе

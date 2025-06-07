@@ -70,9 +70,13 @@ private:
     QJsonObject generateResponse(bool is_positive, const QJsonObject &response_params);
     QJsonObject generateResponse(bool is_positive_, const QString requestType_, const QJsonObject &response_params_);
     bool insertChannel(int server_id, int owner_id, const QString& name, bool is_voice, QJsonArray& channels_info);
-    bool insertMessage(int sender_id, QString &userName, int channel_id, const QString& message_type, QString& content, QString &created_at, QJsonObject &msgHandler);
+    bool insertTextMessage(int sender_id, QString &userName, int channel_id, const QString& message_type, QString& content, QString &created_at, QJsonObject &msgHandler);
+    bool insertInviteMessage(int sender_id, QString &userName, int channel_id, const QString& message_type, int inv_id_, QString& server_name_, QString &created_at, QJsonObject &msgHandler);
     QJsonObject messageToJson(const QString &userName_,
                               const QString &content_,
+                              const QString &timestamp_);
+    QJsonObject messageToJson(const QString &userName_,
+                              const QJsonObject &content_,
                               const QString &timestamp_);
 };
 

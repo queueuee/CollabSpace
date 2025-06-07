@@ -29,6 +29,8 @@ ClientMain::ClientMain(QWidget *parent)
     connect(networkManager__, &NetworkManager::addFriendRequest, this, &ClientMain::on_addFriendRequest);
     connect(networkManager__, &NetworkManager::personalChat, this, &ClientMain::on_addPersonalChat);
     connect(networkManager__, &NetworkManager::addUserToVoiceChannel, this, &ClientMain::addUserToVoiceChannel);
+    connect(ui__->tabWidget, &CustomTabWidget::openSettings, this, &ClientMain::openServerSettings);
+    connect(networkManager__, &NetworkManager::serverInviteData, this, &ClientMain::serverInviteData);
 
     // Авторизация
     Authorization auth(networkManager__);
@@ -296,6 +298,74 @@ void ClientMain::on_connectToVideoChatBtn(int channel_id, int user_id)
     videoChatWindow__->show();
 }
 
+void ClientMain::openServerSettings(int server_id_, const QString &server_name_)
+{
+    QJsonObject settingsRequest{
+                              {REQUEST, GET_SERVER_SETTINGS},
+                              {"user_id", userData__.user_id},
+                              {"server_id", server_id_},
+                              };
+
+    networkManager__->sendMessageJsonToServer(settingsRequest);
+    serverSettings__ = new serverSettings(server_name_);
+    serverSettings__->show();
+}
+
+void ClientMain::serverInviteData(const QJsonObject invData_)
+{
+    if (serverSettings__)
+        serverSettings__->addIvite(invData_);
+
+    auto inviteTemplate = serverSettings__->getInviteList();
+    int server_id = invData_["server_id"].toInt();
+
+    for (auto &key : inviteTemplate.keys())
+    {
+        connect(inviteTemplate[key]->getSendInvBtn(), &QPushButton::clicked, this, [=](){
+            QDialog *dl = new QDialog();
+            dl->setMinimumSize(400, 300);
+            dl->setLayout(new QVBoxLayout());
+            for(auto &user : relatedUsers__)
+            {
+                if (user->getId() == userData__.user_id)
+                    continue;
+                if(!user->getSharedServers().contains(server_id))
+                {
+                    QWidget *userInvHandler = new QWidget();
+                    userInvHandler->setLayout(new QHBoxLayout());
+                    QLabel *userNameLbl = new QLabel(user->getLogin());
+                    QPushButton *inviteBtn = new QPushButton("Отправить");
+                    connect(inviteBtn, &QPushButton::clicked, this, [=](){
+                        QString server_name = userServers__[server_id]->getName();
+                        on_sendInviteClicked(user->getId(), server_name, invData_);
+                    });
+                    userInvHandler->layout()->addWidget(userNameLbl);
+                    userInvHandler->layout()->addWidget(inviteBtn);
+
+                    dl->layout()->addWidget(userInvHandler);
+                }
+            }
+            QSpacerItem *spacer = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
+            dl->layout()->addItem(spacer);
+            dl->exec();
+        });
+    }
+}
+
+void ClientMain::on_sendInviteClicked(int target_id_, QString &serverName, const QJsonObject invData_)
+{
+    qDebug() << target_id_;
+    QJsonObject messageJson{
+                            {REQUEST, MESSAGE},
+                            {TYPE, INVITE},
+                            {"target_id", target_id_},
+                            {"user_id", userData__.user_id},
+                            {"serverName", serverName},
+                            {"invite_id", invData_["invite_id"].toInt()},
+                            };
+    networkManager__->sendMessageJsonToServer(messageJson);
+}
+
 void ClientMain::leaveVoiceChat()
 {
     //systemManager__->leaveVoiceChat();
@@ -431,7 +501,7 @@ void ClientMain::on_updateUser(const QJsonObject &response)
     relatedUsers__[userId]->setState(newState);
 }
 
-void ClientMain::on_friendshipAccepted(const int id, const QString &username, int userState)
+void ClientMain::on_friendshipAccepted(const int id, const QString &username, int userState, const QJsonArray &commonServers)
 {
     if (!relatedUsers__.contains(id))
     {
@@ -442,7 +512,12 @@ void ClientMain::on_friendshipAccepted(const int id, const QString &username, in
         connect(user, &UserProfile::sendWhisper, this, &ClientMain::on_sendWhisper);
         relatedUsers__[id] = user;
     }
-
+    if (!commonServers.empty())
+        for (auto server : commonServers)
+        {
+            QString serverName = server["name"].toString();
+            relatedUsers__[id]->addSharedServer(server["id"].toInt(), serverName);
+        }
     connect(relatedUsers__[id], &UserProfile::statusUpdate, ui__->tableWidget, [=](int id_, UserState state_){
         ui__->tableWidget->on_friendStatusUpdate(id_, state_, username);
     });
@@ -461,6 +536,7 @@ void ClientMain::on_addFriendRequest(const int id_, const QString &username_)
 
     connect(acceptButton, &QPushButton::clicked, this, [=]()
     {
+        container->deleteLater();
         QJsonObject acceptFriendshipRequest{
             {REQUEST, ACCEPT_FRIENDSHIP},
             {"accepter_id", userData__.user_id},
@@ -495,8 +571,7 @@ void ClientMain::on_addPersonalChat(const int channel_id, const QString &usernam
 
     QPushButton *toChatBtn = new QPushButton(username, container);
     connect(toChatBtn, &QPushButton::clicked, this, [=](){
-        if (!personalMessages__[channel_id]->getMessagesCount())
-            on_getMessagesList(channel_id);
+        on_getMessagesList(channel_id);
 
         int currentIndex = ui__->personalMessagesStackedWidget->currentIndex();
         int nextIndex = (currentIndex + 1) % 2;
@@ -534,7 +609,6 @@ void ClientMain::on_sendWhisper(const int target_id, const QString &message_)
 
 void ClientMain::on_sendMessageFromChannel(const int channel_id_, const int mess_type_, const QString &message_)
 {
-    qDebug() << channel_id_;
     if (!message_.isEmpty())
     {
         QJsonObject messageJson{
@@ -570,18 +644,20 @@ void ClientMain::on_sendFriendRequest(const int user_id_)
 }
 
 void ClientMain::handleTextMessageReceived(int server_id,
-                                              int channel_id,
-                                              const QString &userName,
-                                              QString &content,
-                                              const QString& timestamp)
-{
+                                           int channel_id,
+                                           int msg_id,
+                                           const QString &type_,
+                                           const QString &userName,
+                                           const QJsonObject &content,
+                                           const QString& timestamp)
+{    
     if (server_id > 0)
     {
-        userServers__[server_id]->getChannels()[channel_id]->setLastMessage(userName, content, timestamp);
+        userServers__[server_id]->getChannels()[channel_id]->setLastMessage(msg_id, type_, userName, content, timestamp);
         return;
     }
 
-    personalMessages__[channel_id]->setLastMessage(userName, content, timestamp);
+    personalMessages__[channel_id]->setLastMessage(msg_id, type_, userName, content, timestamp);
 }
 
 

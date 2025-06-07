@@ -3,6 +3,7 @@
 
 #include "authorization.h"
 #include "systemmanager.h"
+#include "serversettings.h"
 
 #include <QMainWindow>
 #include <QLineEdit>
@@ -32,8 +33,10 @@ public:
 private slots:
     void handleTextMessageReceived(int server_id,
                                    int channel_id,
+                                   int msg_id,
+                                   const QString &type_,
                                    const QString &userName,
-                                   QString &content,
+                                   const QJsonObject &content,
                                    const QString &timestamp);
 
     void on_getUserServerList(const QJsonObject &response);
@@ -43,7 +46,7 @@ private slots:
     void on_deleteServerAnswer(const QJsonObject &response);
     void on_serverParticipantsList(const QJsonObject &response);
     void on_updateUser(const QJsonObject &response);
-    void on_friendshipAccepted(const int id, const QString &username, int userState);
+    void on_friendshipAccepted(const int id, const QString &username, int userState, const QJsonArray& commonServers = QJsonArray());
     void on_addFriendRequest(const int id, const QString &username);
     void on_addPersonalChat(const int channel_id, const QString &username, const int user_id, const int compadres_id);
     void on_sendWhisper(const int target_id, const QString& message_);
@@ -60,7 +63,9 @@ private slots:
                                const int channel_id);
     void on_startVideoChatBtn(int channel_id);
     void on_connectToVideoChatBtn(int channel_id, int user_id);
-
+    void openServerSettings(int server_id_, const QString& server_name_);
+    void serverInviteData(const QJsonObject invData_);
+    void on_sendInviteClicked(int target_id_, QString &serverName, const QJsonObject invData_);
 
     void startVoiceChat();            // Старт голосового чата
 
@@ -97,10 +102,10 @@ private:
 
     QMap<int, Server*>                              userServers__;
     QMap<int, Channel*>                             personalMessages__;
-    QMap<int, UserProfile*>                         userFriends__;
     QMap<int, UserProfile*>                         relatedUsers__;
     QMap<int, ShortServer*>                         openServers__;
     VideoChatWindow*                                videoChatWindow__;
+    serverSettings*                                 serverSettings__;
 
 
     bool                                            micEnabled__ = true;

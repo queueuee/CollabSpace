@@ -31,6 +31,7 @@
 #define GET_FRIEND_REQUESTS "get_friend_requests"
 #define GET_FRIEND_LIST "get_friend_list"
 #define GET_PERSONAL_CHATS_LIST "get_personal_chats_list"
+#define GET_SERVER_SETTINGS "get_server_settings"
 
 #define TYPE "type"
 // Answer types
@@ -40,6 +41,7 @@
 #define TEXT "text"
 #define FILE "file"
 #define IMAGE "image"
+#define INVITE "invite"
 
 
 #define INFO "info"

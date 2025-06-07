@@ -145,6 +145,7 @@ void CustomTabWidget::onTabContextMenuRequested(const QPoint& pos)
 
     QMenu menu;
     QAction* leaveAction = menu.addAction("Покинуть сервер");
+    QAction* settingsAction = menu.addAction("Настроить сервер");
     QAction* deleteAction = nullptr;
     if (server->canDeleteServer())
         deleteAction = menu.addAction("Удалить сервер");
@@ -154,6 +155,11 @@ void CustomTabWidget::onTabContextMenuRequested(const QPoint& pos)
     if (selected == leaveAction)
     {
         server->leaveServer();
+    }
+    else if (selected == settingsAction)
+    {
+        const QString serverName = server->getName();
+        emit openSettings(server->getId(), serverName);
     }
     else if (selected == deleteAction)
     {
@@ -298,8 +304,7 @@ Server::Server(int id_,
 
         if(!isVoice)
             connect(channelButton, &QPushButton::clicked, this ,[=](){
-                if (channels__[channel_id]->getMessagesCount() == 0)
-                    emit getMessagesList(channel_id);
+                emit getMessagesList(channel_id);
             });
     }
 
@@ -445,10 +450,15 @@ int Channel::getMessagesCount()
         return -1;
 }
 
-void Channel::setLastMessage(const QString &sender_name_,
-                             QString &content_,
+void Channel::setLastMessage(int id,
+                             const QString &type,
+                             const QString &sender_name_,
+                             const QJsonObject &content_,
                              const QString &created_at_)
 {
+    if (messages.contains(id))
+        messages[id]->getWidget()->deleteLater();
+
     QDateTime dateTime = QDateTime::fromString(created_at_, Qt::ISODate);
     QString formattedDate;
     if (dateTime.daysTo(QDateTime::currentDateTime()) >= 1)
@@ -456,10 +466,12 @@ void Channel::setLastMessage(const QString &sender_name_,
     else
         formattedDate = dateTime.toString("hh:mm");
 
-    //chatWindow->append(sender_name_ + " " + formattedDate + '\n' + content_);
-    QString type = TEXT;
-    QWidget *messageHandler = (new Message(-1, type, sender_name_, content_, formattedDate))->getWidget();
+    Message *msg = new Message(-1, type, sender_name_, content_, formattedDate);
+
+    QWidget *messageHandler = msg->getWidget();
+    messages[id] = msg;
     messagesLayout__->addWidget(messageHandler);
+
 }
 
 void Channel::addUserToVoice(UserProfile *user_)
@@ -728,27 +740,42 @@ void FriendsTable::on_friendStatusUpdate(int user_id_, UserState status_, const 
 
 }
 
-Message::Message(int id_, const QString &type_, const QString &authorName_, QString &content_, const QString &dateTime_, QWidget *parent) : QWidget(parent)
+Message::Message(int id_, const QString &type_, const QString &authorName_, const QJsonObject &content_, const QString &dateTime_, QWidget *parent) : QWidget(parent)
 {
     mainWidget__ = new QWidget();
     QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget__);
     QWidget *senderAndTimeWidget = new QWidget();
     QHBoxLayout *senderAndTimeLayout = new QHBoxLayout(senderAndTimeWidget);
     QLabel *sender = new QLabel(authorName_);
-    QTextBrowser *content = new QTextBrowser();
     QLabel *dateTime = new QLabel(dateTime_);
-    sender->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    sender->setStyleSheet("font-weight: bold;");
-    dateTime->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    content->setText(content_);
-    content->setFrameStyle(QFrame::NoFrame);
-
     senderAndTimeLayout->addWidget(sender);
     senderAndTimeLayout->addWidget(dateTime);
     senderAndTimeLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum));
+    sender->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    sender->setStyleSheet("font-weight: bold;");
+    dateTime->setTextInteractionFlags(Qt::TextBrowserInteraction);
 
     mainLayout->addWidget(senderAndTimeWidget);
-    mainLayout->addWidget(content);
+    if (type_ == TEXT)
+    {
+        QTextBrowser *content = new QTextBrowser();
+        content->setText(content_["text"].toString());
+        content->setFrameStyle(QFrame::NoFrame);
+        mainLayout->addWidget(content);
+    }
+    else if (type_ == INVITE)
+    {
+        QWidget *inviteHandler = new QWidget();
+        inviteHandler->setLayout(new QHBoxLayout());
+        QPushButton *acceptInvite = new QPushButton("Принять");
+        QLabel *serverName = new QLabel(content_["server_name"].toString());
+        serverName->setStyleSheet("font-weight: bold;");
+        inviteHandler->layout()->addWidget(new QLabel("Приглашение на сервер:"));
+        inviteHandler->layout()->addWidget(serverName);
+        inviteHandler->layout()->addWidget(acceptInvite);
+        mainLayout->addWidget(inviteHandler);
+    }
+
 }
 
 VideoChatWindow::VideoChatWindow()
