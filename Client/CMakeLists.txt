@@ -9,6 +9,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 find_package(Qt5 REQUIRED COMPONENTS Core
                                      Widgets
                                      Network
@@ -68,3 +70,12 @@ install(TARGETS Client
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(Client)
 endif()
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_PACKAGE_NAME "client")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_CONTACT "you@example.com")
+set(CPACK_PACKAGE_DESCRIPTION "Qt-based Client Application")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5core5a, libqt5widgets5, libqt5network5, libqt5multimedia5, libqt5websockets5, gstreamer1.0-plugins-base, gstreamer1.0-tools")
+
+include(CPack)

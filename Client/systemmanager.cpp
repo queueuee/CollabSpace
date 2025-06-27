@@ -319,6 +319,23 @@ Server::Server(int id_,
     textTabWidget->addTab(textChannelsTab, "Текстовые каналы");
 
     QWidget *createTextChannelTab = new QWidget();
+    QGridLayout *createTextChannelLayout = new QGridLayout();
+    createTextChannelTab->setLayout(createTextChannelLayout);
+    createTextChannelLayout->addWidget(new QLabel("Название:"), 0, 0);
+    createTextChannelLayout->addWidget(new QLineEdit(), 0, 1);
+    createTextChannelLayout->addWidget(new QLabel("Описание:"), 1, 0);
+    createTextChannelLayout->addWidget(new QLineEdit(), 1, 1);
+    createTextChannelLayout->addWidget(new QLabel("Необходимая роль:"), 2, 0);
+    QComboBox *rolesComboBox = new QComboBox();
+    rolesComboBox->addItem("Гость", QVariant(1));
+    rolesComboBox->addItem("Участник", QVariant(2));
+    rolesComboBox->addItem("Модератор", QVariant(3));
+    rolesComboBox->addItem("Администратор", QVariant(4));
+    rolesComboBox->setCurrentIndex(0);
+    createTextChannelLayout->addWidget(rolesComboBox, 2, 1);
+    createTextChannelLayout->addWidget(new QPushButton("Подтвердить"), 3, 0);
+    createTextChannelLayout->addWidget(new QPushButton("Отменить"), 3, 1);
+
     textTabWidget->addTab(createTextChannelTab, "+");
 
     QSplitter *splitter = new QSplitter(Qt::Horizontal);

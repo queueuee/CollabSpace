@@ -3,7 +3,7 @@
 
 
 //#define DB_HOSTNAME "37.128.207.189"
-#define DB_HOSTNAME "127.0.0.1"
+#define DB_HOSTNAME "0.0.0.0"
 #define DB_NAME "prison"
 #define DB_USERNAME "vitaliy"
 #define DB_PASSWORD "admin"

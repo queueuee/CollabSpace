@@ -44,8 +44,11 @@ void Authorization::on_connectBtn_clicked()
     enableFieldsOnAuthProcess(false);
     userData__.login = ui__->loginCheck->text();
     userData__.password = ui__->passCheck->text();
+    QString url = R"(ws://%1:12345)";
+    url.replace("%1", ui__->serverAdrCheck->text());
+    qDebug() << url;
 
-    networkManager__->connectToServer(userData__.login, userData__.password, QUrl(COLLAB_SPACE_URL), 1);
+    networkManager__->connectToServer(userData__.login, userData__.password, QUrl(url), 1);
 }
 
 void Authorization::on_cancelBtn_clicked()

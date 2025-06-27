@@ -33,7 +33,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <property name="documentMode">
        <bool>false</bool>
@@ -59,8 +59,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>314</width>
-             <height>142</height>
+             <width>829</width>
+             <height>350</height>
             </rect>
            </property>
            <attribute name="label">
@@ -148,8 +148,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>98</width>
-                       <height>28</height>
+                       <width>381</width>
+                       <height>276</height>
                       </rect>
                      </property>
                      <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -844,13 +844,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <customwidget>
    <class>CustomTabWidget</class>
    <extends>QTabWidget</extends>
-   <header location="global">../../../../clientmain.h</header>
+   <header location="global">clientmain.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>FriendsTable</class>
    <extends>QTableWidget</extends>
-   <header location="global">../../../../clientmain.h</header>
+   <header location="global">clientmain.h</header>
   </customwidget>
  </customwidgets>
  <resources>

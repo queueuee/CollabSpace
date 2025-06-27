@@ -35,6 +35,7 @@
 #include <QTextBrowser>
 #include <QSplitter>
 #include <QPair>
+#include <QComboBox>
 #include <QSharedPointer>
 
 
